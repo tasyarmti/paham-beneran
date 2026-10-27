@@ -291,16 +291,25 @@ async function viewEdit(id, presetGroup) {
   const topic = id ? await get('topics', id) : null;
   if (id && !topic) return go('#/');
   const all = await getAll('topics');
+  const byDate = all.slice().sort((x, y) => (x.created || '').localeCompare(y.created || ''));
   const points = topic ? topic.points.map(p => ({ ...p })) : [{ text: '', source: '' }];
-  // Kelompok yang sudah ada, beserta format dari topik terbaru di kelompok itu.
-  const groups = {};
-  all.slice().sort((x, y) => (x.created || '').localeCompare(y.created || ''))
-    .forEach(x => { if (x.group) groups[x.group] = { format: x.format || 'kasus', cara: caraOf(x) }; });
-  const names = Object.keys(groups);
-  let group = topic?.group || (presetGroup && groups[presetGroup] ? presetGroup : names.length === 1 ? names[0] : '');
+  const names = [...new Set(byDate.map(x => x.group).filter(Boolean))];
+  // Format "Atur sendiri" yang pernah dibuat bisa dipakai lagi di topik lain.
+  const saved = {};
+  byDate.forEach(x => { if (x.format === 'custom' && x.formatName) saved[x.formatName] = x.cara; });
+
+  let group = topic?.group || (presetGroup && names.includes(presetGroup) ? presetGroup : names.length === 1 ? names[0] : '');
   let isNew = !names.length || (!!topic && !topic.group);
-  let format = group && groups[group] ? groups[group].format : 'umum';
-  let cara = group && groups[group] ? groups[group].cara.map(x => ({ ...x })) : cloneItems(format);
+  let title = topic?.title || '';
+  // Format per topik. Topik baru mengikuti format topik terakhir di kelompok yang sama.
+  const lastInGroup = g => byDate.filter(x => x.group === g).pop();
+  let format, customName, custom;
+  function loadFormat(src) {
+    format = src?.format || (src ? 'kasus' : 'umum');
+    customName = format === 'custom' ? src.formatName || '' : '';
+    custom = format === 'custom' ? src.cara.map(c => ({ ...c })) : [{ text: '', hint: '' }];
+  }
+  loadFormat(topic || lastInGroup(group));
 
   function pointRows() {
     return points.map((p, i) => `<div class="pt2">
@@ -317,126 +326,151 @@ async function viewEdit(id, presetGroup) {
         <button class="chip${isNew ? ' on' : ''}" data-g="">+ Kelompok baru</button></div>` : ''}
       ${isNew ? `<input id="g" class="in" placeholder="Nama kelompok, contoh: Good Labor Practice, Bunpou N4" value="${esc(group)}">` : ''}`;
   }
-  function caraBlock() {
-    return `<div class="chips">${Object.entries(FORMATS).map(([k, f]) => `<button class="chip${k === format ? ' on' : ''}" data-f="${k}">${f.name}</button>`).join('')}</div>
-      <div class="hs">${FORMATS[format].desc}. Format ini berlaku untuk semua topik di kelompok ${group ? `"${esc(group)}"` : 'ini'}.</div>
-      <div class="guide"><b>Apa yang ditulis di sini?</b>
-        Kebiasaan yang ingin kamu cek di setiap penjelasan, apa pun topiknya. Tulis sebagai hal yang bisa dijawab "ya" atau "tidak" saat mendengar ulang rekamanmu.
-        <span class="ok">Pas: "Mulai dari intinya", "Pakai contoh sendiri", "Selesai dalam 2 menit"</span>
-        <span class="no">Kurang pas: "Definisi forced labour". Itu isi materi, jadi tulis di bagian Isi materi.</span></div>
-      ${cara.map((c, i) => `<div class="cr">
-        <div class="pf"><input class="in sm" data-c="${i}" value="${esc(c.text)}" placeholder="Contoh: Pakai contoh sendiri" aria-label="Poin cara menjelaskan ${i + 1}">
-          ${c.hint ? `<small class="hint2">${esc(c.hint)}</small>` : ''}</div>
-        ${cara.length > 1 ? `<button class="del" data-cdel="${i}" aria-label="Hapus poin cara ${i + 1}">×</button>` : ''}
+  function formatBody() {
+    if (format !== 'custom') {
+      const f = FORMATS[format];
+      return `<div class="hs">${f.desc}. Poin di format ini tetap. Kalau ingin poin sendiri, pilih "Atur sendiri".</div>
+        <ol class="fl">${f.items.map(c => `<li><b>${esc(c.text)}</b><span>${esc(c.hint)}</span></li>`).join('')}</ol>`;
+    }
+    return `<div class="guide"><b>Contoh poin buatan sendiri</b>
+        <span>Tulis kebiasaan yang ingin kamu cek di setiap penjelasan, yang bisa dijawab "ya" atau "tidak" saat mendengar ulang rekamanmu.</span>
+        <span class="ok">• Mulai dari intinya</span><span class="ok">• Pakai contoh dari pekerjaan sendiri</span><span class="ok">• Selesai dalam 2 menit</span></div>
+      <div class="fld"><label for="fn">Nama format</label>
+        <input id="fn" class="in" placeholder="Contoh: Rumus Excel, Presentasi ke klien" value="${esc(customName)}"></div>
+      ${custom.map((c, i) => `<div class="pt2">
+        <div class="num">${i + 1}</div>
+        <div class="pf"><input class="in sm" data-c="${i}" data-k="text" value="${esc(c.text)}" placeholder="Poin cara menjelaskan">
+          <input class="in sm" data-c="${i}" data-k="hint" value="${esc(c.hint)}" placeholder="Keterangan (opsional)"></div>
+        ${custom.length > 1 ? `<button class="del" data-cdel="${i}" aria-label="Hapus poin ${i + 1}">×</button>` : ''}
       </div>`).join('')}
-      <button class="add" id="addc">+ Tambah poin cara</button>`;
+      <button class="add" id="addc">+ Tambah poin</button>`;
+  }
+  function formatChips() {
+    const savedChips = Object.keys(saved).filter(n => !(format === 'custom' && n === customName));
+    return `<div class="chips">${Object.entries(FORMATS).filter(([k]) => k !== 'sendiri')
+      .map(([k, f]) => `<button class="chip${k === format ? ' on' : ''}" data-f="${k}">${f.name}</button>`).join('')}
+      ${savedChips.map(n => `<button class="chip" data-saved="${esc(n)}">${esc(n)}</button>`).join('')}
+      <button class="chip${format === 'custom' ? ' on' : ''}" data-f="custom">${format === 'custom' && customName ? esc(customName) : '+ Atur sendiri'}</button></div>`;
   }
 
-  app.innerHTML = `
-    <div class="bar"><button class="back" data-back aria-label="Kembali">‹</button><span class="grow">${topic ? 'Ubah topik' : 'Topik baru'}</span></div>
-    <div class="fld"><span class="lbl">Kelompok materi</span><div id="gb" style="display:flex;flex-direction:column;gap:8px">${groupBlock()}</div></div>
-    <div class="fld"><label for="t">Judul topik</label>
-      <input id="t" class="in" placeholder="Contoh: Forced labour" value="${esc(topic?.title)}"></div>
-    <div class="grp">Isi materi <em>poin yang wajib kamu sebut</em></div>
-    <div id="pts" style="display:flex;flex-direction:column;gap:10px">${pointRows()}</div>
-    <button class="add" id="addpt">+ Tambah poin</button>
-    <div class="tip">Ambil poin dari tujuan pembelajaran, rubrik, atau feedback ujian, jangan dari ingatan. Satu topik sebaiknya bisa dijelaskan dalam 1 sampai 3 menit. Kalau lebih, pecah jadi beberapa topik.</div>
-    <details class="auto" id="cb"${isNew ? ' open' : ''}><summary>Cara menjelaskan <span>format ${FORMATS[format].name} · ${cara.length} poin</span></summary>
-      <div id="cbody" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${caraBlock()}</div></details>
-    <button class="btn" id="save">Simpan topik</button>
-    ${topic ? '<button class="btn danger sm" id="hapus">Hapus topik ini</button>' : ''}`;
+  const head = n => `<div class="bar"><button class="back" ${n === 1 ? 'data-back' : 'id="prev"'} aria-label="Kembali">‹</button>
+    <span class="grow">${topic ? 'Ubah topik' : 'Topik baru'}</span><span class="stepn">Langkah ${n} dari 2</span></div>
+    <div class="steps"><i class="on"></i><i${n === 2 ? ' class="on"' : ''}></i></div>`;
 
-  const pts = $('#pts');
-  const sync = () => pts.querySelectorAll('[data-i]').forEach(el => { points[el.dataset.i][el.dataset.k] = el.value; });
-  // Petunjuk bawaan hanya cocok untuk teks bawaannya, jadi dihapus begitu poinnya diubah.
-  const syncCara = () => app.querySelectorAll('[data-c]').forEach(el => {
-    const c = cara[el.dataset.c];
-    if (c.text !== el.value) { c.text = el.value; c.hint = ''; }
-  });
-  const redrawCara = () => {
-    $('#cbody').innerHTML = caraBlock();
-    $('#cb summary span').textContent = `format ${FORMATS[format].name} · ${cara.length} poin`;
+  const sync = () => app.querySelectorAll('[data-i]').forEach(el => { points[el.dataset.i][el.dataset.k] = el.value; });
+  const syncCustom = () => {
+    app.querySelectorAll('[data-c]').forEach(el => { custom[el.dataset.c][el.dataset.k] = el.value; });
+    if ($('#fn')) customName = $('#fn').value;
   };
-  pts.addEventListener('click', e => {
-    const b = e.target.closest('[data-del]');
-    if (!b) return;
-    sync();
-    points.splice(Number(b.dataset.del), 1);
-    pts.innerHTML = pointRows();
-  });
-  $('#addpt').onclick = () => {
-    sync();
-    points.push({ text: '', source: '' });
-    pts.innerHTML = pointRows();
-    pts.querySelector(`[data-i="${points.length - 1}"]`).focus();
-  };
-  $('#gb').onclick = e => {
-    const b = e.target.closest('[data-g]');
-    if (!b) return;
-    syncCara();
-    if (b.dataset.g) {
-      isNew = false;
+
+  function renderStep1() {
+    app.innerHTML = `${head(1)}
+      <div class="fld"><span class="lbl">Kelompok materi</span><div id="gb" style="display:flex;flex-direction:column;gap:8px">${groupBlock()}</div></div>
+      <div class="fld"><label for="t">Judul topik</label>
+        <input id="t" class="in" placeholder="Contoh: Forced labour" value="${esc(title)}"></div>
+      <div class="grp">Isi materi <em>poin yang wajib kamu sebut</em></div>
+      <div id="pts" style="display:flex;flex-direction:column;gap:10px">${pointRows()}</div>
+      <button class="add" id="addpt">+ Tambah poin</button>
+      <div class="tip">Ambil poin dari tujuan pembelajaran, rubrik, atau feedback ujian, jangan dari ingatan. Satu topik sebaiknya bisa dijelaskan dalam 1 sampai 3 menit. Kalau lebih, pecah jadi beberapa topik.</div>
+      <button class="btn" id="next">Lanjut: cara menjelaskan</button>
+      ${topic ? '<button class="btn danger sm" id="hapus">Hapus topik ini</button>' : ''}`;
+    const pts = $('#pts');
+    pts.onclick = e => {
+      const b = e.target.closest('[data-del]');
+      if (!b) return;
+      sync();
+      points.splice(Number(b.dataset.del), 1);
+      pts.innerHTML = pointRows();
+    };
+    $('#addpt').onclick = () => {
+      sync();
+      points.push({ text: '', source: '' });
+      pts.innerHTML = pointRows();
+      pts.querySelector(`[data-i="${points.length - 1}"]`).focus();
+    };
+    $('#gb').onclick = e => {
+      const b = e.target.closest('[data-g]');
+      if (!b) return;
+      isNew = !b.dataset.g;
       group = b.dataset.g;
-      format = groups[group].format;
-      cara = groups[group].cara.map(x => ({ ...x }));
-    } else {
-      isNew = true;
-      group = '';
-      format = 'umum';
-      cara = cloneItems(format);
-      $('#cb').open = true;
-    }
-    $('#gb').innerHTML = groupBlock();
-    if (isNew) $('#g').focus();
-    redrawCara();
-  };
-  $('#cbody').oninput = e => {
-    if (!e.target.dataset.c) return;
-    e.target.parentElement.querySelector('.hint2')?.remove();
-  };
-  $('#gb').oninput = e => { if (e.target.id === 'g') group = e.target.value.trim(); };
-  $('#cbody').onclick = e => {
-    const f = e.target.closest('[data-f]');
-    const d = e.target.closest('[data-cdel]');
-    if (f) {
-      format = f.dataset.f;
-      cara = cloneItems(format);
-    } else if (d) {
-      syncCara();
-      cara.splice(Number(d.dataset.cdel), 1);
-    } else if (e.target.id === 'addc') {
-      syncCara();
-      cara.push({ text: '', hint: '' });
-      redrawCara();
-      app.querySelector(`[data-c="${cara.length - 1}"]`).focus();
-      return;
-    } else return;
-    redrawCara();
-  };
-  $('#save').onclick = async () => {
-    sync();
-    syncCara();
-    const title = $('#t').value.trim();
-    const g = (isNew ? $('#g')?.value : group || '').trim();
-    const clean = points.map(p => ({ text: p.text.trim(), source: p.source.trim() })).filter(p => p.text);
-    const caraClean = cara.map(c => ({ text: c.text.trim(), hint: c.hint || '' })).filter(c => c.text);
-    if (!title) { toast('Isi judul topik dulu.'); $('#t').focus(); return; }
-    if (!clean.length) { toast('Tambahkan minimal satu poin isi materi.'); return; }
-    if (!caraClean.length) { toast('Tambahkan minimal satu poin cara menjelaskan.'); return; }
-    const data = topic
-      ? { ...topic, title, group: g, points: clean, format, cara: caraClean }
-      : { id: uid(), title, group: g, points: clean, format, cara: caraClean, stage: 0, next: null, created: new Date().toISOString() };
-    await put('topics', data);
-    // Format berlaku untuk seluruh kelompok.
-    if (g) {
-      for (const x of all) {
-        if (x.group === g && x.id !== data.id) await put('topics', { ...x, format, cara: caraClean });
+      if (!topic) loadFormat(lastInGroup(group));
+      $('#gb').innerHTML = groupBlock();
+      if (isNew) $('#g').focus();
+    };
+    $('#gb').oninput = e => { if (e.target.id === 'g') group = e.target.value.trim(); };
+    $('#next').onclick = () => {
+      sync();
+      title = $('#t').value.trim();
+      if (isNew) group = ($('#g')?.value || '').trim();
+      if (!title) { toast('Isi judul topik dulu.'); $('#t').focus(); return; }
+      if (!points.some(p => p.text.trim())) { toast('Tambahkan minimal satu poin isi materi.'); return; }
+      renderStep2();
+    };
+    if (topic) bindDelete();
+  }
+
+  function renderStep2() {
+    app.innerHTML = `${head(2)}
+      <div class="hero"><div class="tag">Cara menjelaskan</div>
+        <div class="hs">Kerangka yang kamu cek setelah merekam, selain isi materi. Pilih format yang paling cocok untuk topik "${esc(title)}".</div></div>
+      <div id="fc">${formatChips()}</div>
+      <div id="fb" style="display:flex;flex-direction:column;gap:10px">${formatBody()}</div>
+      <div class="row2"><button class="btn line" id="prev2">Kembali</button><button class="btn" id="save">Simpan topik</button></div>`;
+    const redraw = () => { $('#fc').innerHTML = formatChips(); $('#fb').innerHTML = formatBody(); };
+    $('#fc').onclick = e => {
+      const f = e.target.closest('[data-f]'), sv = e.target.closest('[data-saved]');
+      if (format === 'custom') syncCustom();
+      if (sv) {
+        format = 'custom';
+        customName = sv.dataset.saved;
+        custom = saved[customName].map(c => ({ ...c }));
+      } else if (f) {
+        // "+ Atur sendiri" selalu mulai dari format kosong.
+        if (f.dataset.f === 'custom' && format !== 'custom') {
+          customName = '';
+          custom = [{ text: '', hint: '' }];
+        }
+        format = f.dataset.f;
+      } else return;
+      redraw();
+    };
+    $('#fb').onclick = e => {
+      const d = e.target.closest('[data-cdel]');
+      if (d) { syncCustom(); custom.splice(Number(d.dataset.cdel), 1); redraw(); }
+      else if (e.target.id === 'addc') {
+        syncCustom();
+        custom.push({ text: '', hint: '' });
+        redraw();
+        app.querySelector(`[data-c="${custom.length - 1}"][data-k="text"]`).focus();
       }
+    };
+    const back = () => { if (format === 'custom') syncCustom(); renderStep1(); };
+    $('#prev').onclick = back;
+    $('#prev2').onclick = back;
+    $('#save').onclick = save;
+  }
+
+  async function save() {
+    if (format === 'custom') syncCustom();
+    const clean = points.map(p => ({ text: p.text.trim(), source: p.source.trim() })).filter(p => p.text);
+    let cara, formatName = '';
+    if (format === 'custom') {
+      cara = custom.map(c => ({ text: c.text.trim(), hint: c.hint.trim() })).filter(c => c.text);
+      formatName = customName.trim();
+      if (!formatName) { toast('Beri nama format dulu.'); $('#fn').focus(); return; }
+      if (!cara.length) { toast('Tambahkan minimal satu poin cara menjelaskan.'); return; }
+    } else {
+      cara = cloneItems(format);
     }
+    const base = { title, group, points: clean, format, formatName, cara };
+    const data = topic ? { ...topic, ...base }
+      : { id: uid(), ...base, stage: 0, next: null, created: new Date().toISOString() };
+    await put('topics', data);
     toast('Topik tersimpan.');
     go(`#/topik/${data.id}`);
-  };
-  if (topic) {
+  }
+
+  function bindDelete() {
     $('#hapus').onclick = async e => {
       const b = e.currentTarget;
       if (!b.dataset.sure) {
@@ -453,6 +487,8 @@ async function viewEdit(id, presetGroup) {
       go('#/');
     };
   }
+
+  renderStep1();
 }
 
 async function viewTopic(id) {
@@ -649,7 +685,7 @@ async function viewCheck() {
       <div class="sc"><div class="big" id="sc"></div><span>Cara menjelaskan</span></div></div>
     <div class="grp">Isi materi <em>poin dari topik ini</em></div>
     <div id="isi" style="display:flex;flex-direction:column;gap:8px"></div>
-    <div class="grp">Cara menjelaskan <em>format ${FORMATS[topic.format]?.name || 'Studi kasus'}</em></div>
+    <div class="grp">Cara menjelaskan <em>format ${topic.format === 'custom' ? esc(topic.formatName) : FORMATS[topic.format]?.name || 'Studi kasus'}</em></div>
     <div id="cara" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="fld"><label for="nt">Catatan (opsional)</label>
       <textarea id="nt" class="in" rows="3" placeholder="Apa yang terlewat atau keliru? Bisa juga tempel feedback dari ChatGPT/Claude."></textarea></div>
