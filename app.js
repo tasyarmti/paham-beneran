@@ -216,6 +216,21 @@ Transkrip penjelasan saya (opsional):
 `;
 }
 
+// Penjelasan tombol salin prompt, plus isi prompt untuk disalin manual kalau clipboard diblokir.
+function promptHelp(text) {
+  return `<details class="auto help"><summary>Apa gunanya tombol ini?</summary>
+    <ol>
+      <li>Tombol menyalin pesan berisi daftar poin isi materimu.</li>
+      <li>Buka ChatGPT atau Claude, lalu tempel (paste) pesannya.</li>
+      <li>AI akan memeriksa apakah poin-poinmu sudah benar dan apa yang mungkin terlewat. AI diminta tidak menuliskan jawaban lengkap, supaya kamu tetap berlatih sendiri.</li>
+      <li>Opsional: tulis atau tempel transkrip penjelasanmu di akhir pesan untuk dapat feedback.</li>
+      <li>Kalau ada poin yang keliru, perbaiki lewat tombol Ubah di halaman topik. Feedback-nya bisa disimpan di kolom Catatan.</li>
+    </ol>
+    <label class="lbl" for="pt">Isi pesan (bisa disalin manual)</label>
+    <textarea id="pt" class="in sm" rows="5" readonly>${esc(text)}</textarea>
+  </details>`;
+}
+
 /* ---------- State sementara ---------- */
 let pending = null;   // hasil rekaman yang belum disimpan
 let recorder = null;  // { mr, stream, ctx, raf, timer }
@@ -491,6 +506,12 @@ async function viewEdit(id, presetGroup) {
   renderStep1();
 }
 
+function resultList(title, labels, ticks) {
+  if (!labels?.length) return '';
+  return `<div class="res"><span class="lbl">${title}</span>${labels.map((l, i) => `<div class="${ticks[i] ? 'hit' : 'miss'}">
+    <i>${ticks[i] ? '✓' : '✗'}</i><span>${esc(typeof l === 'string' ? l : l.text)}</span></div>`).join('')}</div>`;
+}
+
 async function viewTopic(id) {
   const topic = await get('topics', id);
   if (!topic) return go('#/');
@@ -503,21 +524,30 @@ async function viewTopic(id) {
     <div class="bar"><button class="back" data-go="#/" aria-label="Kembali">‹</button><span class="grow">${esc(topic.title)}</span>
       <button class="iconbtn" data-go="#/edit/${id}">Ubah</button></div>
     ${topic.next ? `<div class="nxt2"><div><span>Tes ulang berikut · ${relDate(topic.next)}</span><b>${fmtDate(topic.next)}</b></div>
-      <label class="iconbtn" for="nd">Ubah tanggal</label></div>
-      <input type="date" id="nd" value="${topic.next}" style="position:absolute;opacity:0;pointer-events:none;width:1px">` : ''}
+      <button class="iconbtn" id="ndb">Ubah tanggal</button></div>
+      <div class="att" id="ndp" hidden>
+        <span class="lbl">Pindahkan tes ulang ke</span>
+        <div class="chips">${[1, 3, 7].map(d => `<button class="chip" data-d="${addDays(today(), d)}">${d === 1 ? 'Besok' : `${d} hari lagi`}</button>`).join('')}</div>
+        <div class="row2"><input type="date" id="nd" class="in" value="${topic.next}" min="${today()}" aria-label="Tanggal tes ulang">
+          <button class="btn sm" id="nds">Simpan</button></div>
+        <span class="hint">Jadwal otomatis tetap berjalan lagi setelah tes berikutnya.</span>
+      </div>` : ''}
     <div class="sec">Isi materi (${topic.points.length} poin)</div>
     <details class="auto"><summary>Lihat poin <span>sebaiknya setelah tes, bukan sebelum</span></summary>
       <ol>${topic.points.map(p => `<li>${esc(p.text)}${p.source ? ` <small style="color:var(--muted)">· ${esc(p.source)}</small>` : ''}</li>`).join('')}</ol></details>
     <div class="sec">Riwayat rekaman</div>
-    ${n ? atts.map((a, i) => `<div class="att">
-      <div class="ah"><div class="at"><b>${label(i)} · ${fmtDate(a.date.slice(0, 10), false)}</b>
+    ${n ? atts.map((a, i) => `<details class="att"${i === 0 ? ' open' : ''}>
+      <summary class="ah"><div class="at"><b>${label(i)} · ${fmtDate(a.date.slice(0, 10), false)}</b>
         <span>${a.duration ? fmtDur(a.duration) + ' · ' : ''}untuk ${esc(a.audience.toLowerCase())}</span></div>
-        <div class="sp"><em>Isi ${a.isi.filter(Boolean).length}/${a.isi.length}</em><em>Cara ${a.cara.filter(Boolean).length}/${a.cara.length}</em></div></div>
+        <div class="sp"><em>Isi ${a.isi.filter(Boolean).length}/${a.isi.length}</em><em>Cara ${a.cara.filter(Boolean).length}/${a.cara.length}</em></div>
+        <span class="chev" aria-hidden="true">›</span></summary>
       ${a.hasAudio ? `<audio controls preload="none" data-audio="${a.id}"></audio>` : ''}
-      ${a.missed?.length ? `<div class="note"><b>Terlewat</b>${esc(a.missed.join('; '))}</div>` : ''}
+      ${resultList('Isi materi', a.isiLabels, a.isi)}
+      ${resultList('Cara menjelaskan', a.caraLabels, a.cara)}
       ${a.note ? `<div class="note"><b>Catatan</b>${esc(a.note)}</div>` : ''}
-    </div>`).join('') : '<div class="empty">Belum ada rekaman. Jelaskan topik ini tanpa catatan untuk memulai jadwal tes ulang.</div>'}
+    </details>`).join('') : '<div class="empty">Belum ada rekaman. Jelaskan topik ini tanpa catatan untuk memulai jadwal tes ulang.</div>'}
     <button class="btn ghost sm" id="cp">Salin prompt cek checklist</button>
+    ${promptHelp(checkPrompt(topic, atts[0]?.audience || AUDIENCES[0], atts[0]?.note))}
     <p class="store">Rekaman tersimpan di browser perangkat ini saja</p>
     <button class="btn" data-go="#/rekam/${id}">${nextLabel}</button>`;
 
@@ -532,16 +562,17 @@ async function viewTopic(id) {
     }, { once: true });
   });
   $('#cp').onclick = () => copyText(checkPrompt(topic, atts[0]?.audience || AUDIENCES[0], atts[0]?.note));
-  const nd = $('#nd');
-  if (nd) {
-    $('label[for="nd"]').onclick = e => { e.preventDefault(); nd.showPicker ? nd.showPicker() : nd.click(); };
-    nd.onchange = async () => {
-      if (!nd.value) return;
-      topic.next = nd.value;
+  if (topic.next) {
+    const move = async date => {
+      if (!date) { toast('Pilih tanggal dulu.'); return; }
+      topic.next = date;
       await put('topics', topic);
-      toast(`Tes ulang dipindah ke ${fmtDate(nd.value)}.`);
+      toast(`Tes ulang dipindah ke ${fmtDate(date)}.`);
       viewTopic(id);
     };
+    $('#ndb').onclick = () => { $('#ndp').hidden = !$('#ndp').hidden; };
+    $('#ndp').onclick = e => { const c = e.target.closest('[data-d]'); if (c) move(c.dataset.d); };
+    $('#nds').onclick = () => move($('#nd').value);
   }
 }
 
@@ -690,6 +721,7 @@ async function viewCheck() {
     <div class="fld"><label for="nt">Catatan (opsional)</label>
       <textarea id="nt" class="in" rows="3" placeholder="Apa yang terlewat atau keliru? Bisa juga tempel feedback dari ChatGPT/Claude."></textarea></div>
     <button class="btn ghost sm" id="cp">Salin prompt cek checklist</button>
+    ${promptHelp(checkPrompt(topic, pending.audience, ''))}
     <button class="btn" id="sv">Simpan & lihat jadwal</button>`;
   draw();
 
@@ -754,7 +786,9 @@ async function viewSchedule(id) {
     ${last.missed.length ? `<div class="note"><b>Terlewat</b>${esc(last.missed.join('; '))}</div>` : ''}
     <div class="grp">Jadwal tes ulang <em>tanpa lihat catatan</em></div>
     <div class="tl">${tl}</div>
-    <div class="fld"><label for="jm">Jam pengingat</label><input id="jm" type="time" class="in" value="${time}"></div>
+    <div class="fld"><label for="jm">Jam pengingat</label><select id="jm" class="in">${
+      Array.from({ length: 35 }, (_, k) => `${pad(5 + Math.floor(k / 2))}:${k % 2 ? '30' : '00'}`)
+        .map(v => `<option${v === time ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
     <a class="btn" id="gc" target="_blank" rel="noopener">Tambah ke Google Calendar</a>
     <button class="btn ghost sm" id="ics">Unduh pengingat (.ics)</button>
     <button class="btn line sm" data-go="#/">Kembali ke beranda</button>`;

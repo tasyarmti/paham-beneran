@@ -176,3 +176,18 @@ a.btn { text-decoration: none; }
 .fl li b { font-size: 14px; }
 .fl li span { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
 .row2 .btn { margin-top: 0; }
+details.att > summary { list-style: none; cursor: pointer; }
+details.att > summary::-webkit-details-marker { display: none; }
+.chev { font-size: 22px; color: var(--muted); transition: transform .15s; }
+details.att[open] .chev { transform: rotate(90deg); }
+.res { display: flex; flex-direction: column; gap: 4px; background: #fff; border-radius: 12px; padding: 8px 10px; }
+.res > div { display: flex; gap: 8px; font-size: 13px; align-items: flex-start; }
+.res i { font-style: normal; font-weight: 900; width: 16px; flex: none; }
+.res .hit i { color: var(--dark); }
+.res .miss { color: var(--warn); }
+.help { background: var(--card); }
+.help ol { font-size: 13px; margin-bottom: 8px; }
+select.in { appearance: auto; }
+.row2 input.in { min-width: 0; }
+[hidden] { display: none !important; }
+#ndp .chip { background: #fff; }
