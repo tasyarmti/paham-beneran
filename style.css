@@ -224,3 +224,4 @@ select.in { appearance: auto; }
 .how3 { margin: 4px 0 2px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .how3 b { color: var(--dark); }
 .how .how3, .how > .hs { margin: 8px 4px 0; }
+.hint.left { text-align: left; font-size: 12px; margin-top: -4px; }

@@ -7,6 +7,7 @@
 
 const INTERVALS = [1, 3, 7, 14, 30];
 const AUDIENCES = ['Orang awam', 'Atasan', 'Junior', 'Teman sekelas'];
+const audHint = a => `Mengatur gaya bahasamu dan satu poin cek: "Bahasa bisa dipahami ${a.toLowerCase()}".`;
 // Format "Cara menjelaskan" dipilih per kelompok materi. Setiap poin punya petunjuk singkat.
 const PLAIN = { text: 'Bahasa bisa dipahami pendengar', hint: 'Hindari istilah teknis, atau jelaskan istilahnya dalam satu kalimat sederhana.' };
 const FORMATS = {
@@ -220,7 +221,7 @@ Materi kursusnya saya lampirkan. Tolong bantu saya:
 const HOWTO = `<ol class="how3">
     <li><b>Tulis poin dari materi.</b> Kamu sendiri yang menulis, dalam bentuk kalimat isi.</li>
     <li><b>Jelaskan dari ingatan sambil merekam.</b> Tanpa catatan, seolah ke orang lain.</li>
-    <li><b>Putar ulang dan centang</b> poin yang benar-benar kamu sebut. App mengingatkan kapan tes ulang.</li>
+    <li><b>Putar ulang dan centang</b> dua checklist: isi materi (apa yang kamu sebut) dan cara menjelaskan (bagaimana kamu menyampaikannya). App mengingatkan kapan tes ulang.</li>
   </ol>
   <div class="hs">App ini tidak membuat soal. Kamu yang menjelaskan, karena di situ kelihatan apa yang benar-benar kamu ingat.</div>`;
 
@@ -375,13 +376,13 @@ async function viewEdit(id, presetGroup) {
   function formatBody() {
     if (format !== 'custom') {
       const f = FORMATS[format];
-      return `<div class="hs">${f.desc}. Poin di format ini tetap. Kalau ingin poin sendiri, pilih "Atur sendiri".</div>
+      return `<div class="hs">${f.desc}. Poin di kerangka ini tetap. Kalau ingin poin sendiri, pilih "Atur sendiri".</div>
         <ol class="fl">${f.items.map(c => `<li><b>${esc(c.text)}</b><span>${esc(c.hint)}</span></li>`).join('')}</ol>`;
     }
     return `<div class="guide"><b>Contoh poin buatan sendiri</b>
         <span>Tulis kebiasaan yang ingin kamu cek di setiap penjelasan, yang bisa dijawab "ya" atau "tidak" saat mendengar ulang rekamanmu.</span>
         <span class="ok">• Mulai dari intinya</span><span class="ok">• Pakai contoh dari pekerjaan sendiri</span><span class="ok">• Selesai dalam 2 menit</span></div>
-      <div class="fld"><label for="fn">Nama format</label>
+      <div class="fld"><label for="fn">Nama kerangka</label>
         <input id="fn" class="in" placeholder="Contoh: Rumus Excel, Presentasi ke klien" value="${esc(customName)}"></div>
       ${custom.map((c, i) => `<div class="pt2">
         <div class="num">${i + 1}</div>
@@ -474,7 +475,7 @@ async function viewEdit(id, presetGroup) {
   function renderStep2() {
     app.innerHTML = `${head(2)}
       <div class="hero"><div class="tag">Cara menjelaskan</div>
-        <div class="hs">Kerangka yang kamu cek setelah merekam, selain isi materi. Pilih format yang paling cocok untuk topik "${esc(title)}".</div></div>
+        <div class="hs"><b>Isi materi</b> = apa yang harus kamu sebut. <b>Cara menjelaskan</b> = bagaimana kamu menyampaikannya, misalnya mulai dari intinya. Pilih kerangka yang paling cocok untuk topik "${esc(title)}".</div></div>
       <div id="fc">${formatChips()}</div>
       <div id="fb" style="display:flex;flex-direction:column;gap:10px">${formatBody()}</div>
       <div class="row2"><button class="btn line" id="prev2">Kembali</button><button class="btn" id="save">Simpan topik</button></div>`;
@@ -519,7 +520,7 @@ async function viewEdit(id, presetGroup) {
     if (format === 'custom') {
       cara = custom.map(c => ({ text: c.text.trim(), hint: c.hint.trim() })).filter(c => c.text);
       formatName = customName.trim();
-      if (!formatName) { toast('Beri nama format dulu.'); $('#fn').focus(); return; }
+      if (!formatName) { toast('Beri nama kerangka dulu.'); $('#fn').focus(); return; }
       if (!cara.length) { toast('Tambahkan minimal satu poin cara menjelaskan.'); return; }
     } else {
       cara = cloneItems(format);
@@ -656,9 +657,10 @@ async function viewRecord(id) {
     <div class="bar"><button class="back" data-go="#/topik/${id}" aria-label="Kembali">‹</button><span class="grow">${esc(topic.title)}</span></div>
     <div class="sec">Jelaskan untuk siapa?</div>
     <div class="chips" id="aud">${AUDIENCES.map(a => `<button class="chip${a === audience ? ' on' : ''}" data-a="${a}">${a}</button>`).join('')}</div>
+    <div class="hint left" id="audh">${audHint(audience)}</div>
     <details class="auto"><summary>Panduan cara menjelaskan <span>boleh dilihat, ini bukan isi materi</span></summary>
       <ol>${caraOf(topic).map(c => `<li><b>${esc(c.text)}</b>${c.hint ? `<br><small style="color:var(--muted)">${esc(c.hint)}</small>` : ''}</li>`).join('')}</ol></details>
-    <div class="hide"><b>Catatan disembunyikan</b><span>Jelaskan dari ingatan dulu, seolah sedang bicara ke ${audience.toLowerCase()}. Checklist muncul setelah selesai.</span></div>
+    <div class="hide"><b>Jelaskan dari ingatan</b><span>Poin tidak ditampilkan dulu supaya kelihatan apa yang benar-benar kamu ingat. Checklist muncul setelah selesai.</span></div>
     <div class="recwrap">
       <div class="timer" id="tm">0:00</div>
       <div class="wave" id="wv">${'<i></i>'.repeat(20)}</div>
@@ -676,7 +678,7 @@ async function viewRecord(id) {
     if (!b || recorder) return;
     audience = b.dataset.a;
     app.querySelectorAll('#aud .chip').forEach(c => c.classList.toggle('on', c === b));
-    app.querySelector('.hide span').textContent = `Jelaskan dari ingatan dulu, seolah sedang bicara ke ${audience.toLowerCase()}. Checklist muncul setelah selesai.`;
+    $('#audh').textContent = audHint(audience);
   };
   $('#skip').onclick = () => {
     stopRecorder();
@@ -785,7 +787,7 @@ async function viewCheck() {
       <div class="sc"><div class="big" id="sc"></div><span>Cara menjelaskan</span></div></div>
     <div class="grp">Isi materi <em>poin dari topik ini</em></div>
     <div id="isi" style="display:flex;flex-direction:column;gap:8px"></div>
-    <div class="grp">Cara menjelaskan <em>format ${topic.format === 'custom' ? esc(topic.formatName) : FORMATS[topic.format]?.name || 'Studi kasus'}</em></div>
+    <div class="grp">Cara menjelaskan <em>kerangka ${topic.format === 'custom' ? esc(topic.formatName) : FORMATS[topic.format]?.name || 'Studi kasus'}</em></div>
     <div id="cara" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="fld"><label for="nt">Catatan (opsional)</label>
       <textarea id="nt" class="in" rows="3" placeholder="Apa yang terlewat atau keliru? Bisa juga tempel feedback dari ChatGPT/Claude."></textarea></div>
@@ -802,6 +804,8 @@ async function viewCheck() {
   $('#isi').onclick = onTick;
   $('#cara').onclick = onTick;
   $('#sv').onclick = async () => {
+    if (!isi.some(Boolean) && !caraOn.some(Boolean)
+      && !confirm(`Belum ada yang dicentang. Simpan sebagai 0 dari ${isi.length}? Tes akan diulang besok.`)) return;
     const isFirst = prev.length === 0;
     const pass = isi.every(Boolean);
     const att = {
@@ -875,6 +879,7 @@ async function viewSchedule(id) {
     <div class="tip">${msg}</div>
     ${last.missed.length ? `<div class="note"><b>Terlewat</b>${esc(last.missed.join('; '))}</div>` : ''}
     <div class="grp">Jadwal tes ulang <em>tanpa lihat catatan</em></div>
+    <div class="tip">Jeda makin panjang supaya kamu mengingat ulang tepat saat mulai lupa (spaced repetition). Kalau ada poin isi terlewat, tes diulang besok.</div>
     <div class="tl">${tl}</div>
     <button class="tlink" id="ndb">Ubah tanggal tes ulang</button>
     ${datePanel(topic)}
