@@ -33,10 +33,10 @@ const FORMATS = {
   bahasa: {
     name: 'Grammar bahasa', desc: 'Pola kalimat, tata bahasa',
     items: [
-      { text: 'Arti dan fungsi pola', hint: 'Kapan pola ini dipakai. Contoh: ~te iru untuk aksi yang sedang berlangsung atau keadaan.' },
-      { text: 'Cara membentuk', hint: 'Rumus sambungnya. Contoh: kata kerja bentuk -te + iru.' },
+      { text: 'Arti dan fungsi pola', hint: 'Kapan pola ini dipakai. Contoh: ~te iru (Jepang) untuk aksi yang sedang berlangsung, present perfect (Inggris) untuk pengalaman yang masih terasa sekarang.' },
+      { text: 'Cara membentuk', hint: 'Rumus sambungnya. Contoh: kata kerja bentuk -te + iru (Jepang), have/has + kata kerja bentuk ke-3 (Inggris).' },
       { text: 'Contoh kalimat sendiri', hint: 'Buat 1 sampai 2 kalimat baru tentang hidupmu, bukan dari buku.' },
-      { text: 'Beda dengan pola yang mirip', hint: 'Sebut satu pola yang sering tertukar dan bedanya. Contoh: ~te iru dan ~te aru.' },
+      { text: 'Beda dengan pola yang mirip', hint: 'Sebut satu pola yang sering tertukar dan bedanya. Contoh: ~te iru vs ~te aru (Jepang), atau present perfect vs past simple (Inggris).' },
       PLAIN,
     ],
   },
@@ -256,6 +256,15 @@ const app = $('#app');
 async function viewHome() {
   const all = await getAll('topics');
   const topics = all.filter(x => !x.done);
+  // Skor isi materi dari tes terakhir tiap topik, untuk lingkaran di daftar.
+  const lastAtt = {};
+  (await getAll('attempts')).sort((a, b) => a.date.localeCompare(b.date)).forEach(a => { lastAtt[a.topicId] = a; });
+  const score = (x, cls = '') => {
+    const a = lastAtt[x.id];
+    if (!a || !a.isi.length) return `<div class="dot${cls}" aria-label="Belum pernah dites">–</div>`;
+    const got = a.isi.filter(Boolean).length;
+    return `<div class="dot ring${cls}" style="--p:${Math.round(got / a.isi.length * 100)}" aria-label="Tes terakhir: ${got} dari ${a.isi.length} poin isi materi">${got}/${a.isi.length}</div>`;
+  };
   const doneList = all.filter(x => x.done).sort((a, b) => b.done.localeCompare(a.done));
   const t = today();
   const due = topics.filter(x => x.next && x.next <= t).sort((a, b) => a.next.localeCompare(b.next));
@@ -295,7 +304,7 @@ async function viewHome() {
         : isDue ? '<span class="pill due">hari ini</span>'
         : `<span class="pill${daysBetween(t, x.next) > 3 ? ' ok' : ''}">${relDate(x.next)}</span>`;
       return `<button class="item" data-go="#/topik/${x.id}">
-        <div class="dot${isDue ? ' due' : soon ? ' soon' : ''}"></div>
+        ${score(x, isDue ? ' due' : soon ? ' soon' : '')}
         <div class="it"><b>${esc(x.title)}</b><span>${x.points.length} poin · ${x.next ? `tes berikut ${fmtDate(x.next, false)}` : 'belum direkam'}</span></div>
         ${pill}</button>`;
     }).join('')}`).join('');
@@ -306,7 +315,7 @@ async function viewHome() {
     ${topics.length ? `<div class="sec">Topik saya</div>${list}` : ''}
     ${doneList.length ? `<details class="donesec"><summary><span class="sec">Selesai (${doneList.length})</span><span class="chev" aria-hidden="true">›</span></summary>
       ${doneList.map(x => `<button class="item fin" data-go="#/topik/${x.id}">
-        <div class="dot ok"></div>
+        ${score(x)}
         <div class="it"><b>${esc(x.title)}</b><span>${esc(x.group || 'Tanpa kelompok')} · selesai ${fmtDate(x.done, false)}</span></div>
         <span class="pill ok">selesai</span></button>`).join('')}</details>` : ''}
     <p class="foot">Data dan rekaman tersimpan di browser perangkat ini saja.</p>
@@ -549,6 +558,13 @@ function bindDatePanel(topic, done) {
   if (!IN_ARTIFACT) $('#nd').onclick = e => { try { e.target.showPicker?.(); } catch {} };
 }
 
+async function loadAudio(el) {
+  if (el.src) return;
+  const blob = await get('audio', el.dataset.audio);
+  if (!blob) { toast('Rekaman tidak ditemukan di perangkat ini.'); return; }
+  el.src = URL.createObjectURL(blob);
+}
+
 function resultList(title, labels, ticks) {
   if (!labels?.length) return '';
   return `<div class="res"><span class="lbl">${title}</span>${labels.map((l, i) => `<div class="${ticks[i] ? 'hit' : 'miss'}">
@@ -591,16 +607,11 @@ async function viewTopic(id) {
     ${topic.done ? '' : `<div class="donecta"><button class="btn ghost sm" id="markdone">✓ Tandai selesai</button>
       <span class="hint">Untuk topik yang sudah nempel atau ujiannya sudah lewat. Topik pindah ke bagian Selesai di bawah beranda dan tidak dijadwalkan tes ulang lagi. Riwayat tetap tersimpan.</span></div>`}`;
 
-  // Muat audio hanya saat diputar.
-  app.querySelectorAll('audio[data-audio]').forEach(el => {
-    el.addEventListener('play', async function load() {
-      if (el.src) return;
-      const blob = await get('audio', el.dataset.audio);
-      if (!blob) { toast('Rekaman tidak ditemukan di perangkat ini.'); return; }
-      el.src = URL.createObjectURL(blob);
-      el.play();
-    }, { once: true });
-  });
+  // Muat audio saat riwayatnya dibuka. Tombol putar bawaan tidak bereaksi kalau audio belum punya sumber.
+  app.querySelectorAll('details.att').forEach(d => d.addEventListener('toggle', () => {
+    const el = d.querySelector('audio[data-audio]');
+    if (d.open && el) loadAudio(el);
+  }));
   if (topic.next && !topic.done) bindDatePanel(topic, () => viewTopic(id));
   const setDone = async val => {
     if (val) topic.done = today(); else delete topic.done;
@@ -809,11 +820,7 @@ async function viewResult(id) {
     <div class="tip">Hasil ini sudah tersimpan dan dipakai untuk menghitung jadwal tes ulang.</div>
     <button class="btn" data-go="#/jadwal/${id}">Lihat jadwal tes ulang</button>`;
   const el = app.querySelector('audio[data-audio]');
-  if (el) el.addEventListener('play', async () => {
-    if (el.src) return;
-    const blob = await get('audio', el.dataset.audio);
-    if (blob) { el.src = URL.createObjectURL(blob); el.play(); }
-  }, { once: true });
+  if (el) loadAudio(el);
 }
 
 async function viewSchedule(id) {
