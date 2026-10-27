@@ -218,3 +218,10 @@ select.in { appearance: auto; }
 .fab { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 :focus-visible { outline: 3px solid var(--yolk); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.fld .hint { font-size: 12px; text-align: left; }
+.srcadd { align-self: flex-start; font-size: 12px; font-weight: 800; color: var(--muted); padding: 2px 4px; }
+.how3 { margin: 4px 0 2px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.how3 b { color: var(--dark); }
+.how .how3, .how > .hs { margin: 8px 4px 0; }
+.hint.left { text-align: left; font-size: 12px; margin-top: -4px; }
