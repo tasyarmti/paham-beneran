@@ -24,7 +24,8 @@ let dbPromise;
 function db() {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
+      let req;
+      try { req = indexedDB.open(DB_NAME, 1); } catch (e) { reject(e); return; }
       req.onupgradeneeded = () => {
         const d = req.result;
         d.createObjectStore('topics', { keyPath: 'id' });
@@ -38,8 +39,15 @@ function db() {
   }
   return dbPromise;
 }
+// Cadangan di memori kalau IndexedDB tidak tersedia (mode privat, pratinjau).
+const mem = { topics: new Map(), attempts: new Map(), audio: new Map() };
+let memOnly = false;
 async function tx(store, mode, fn) {
-  const d = await db();
+  let d = null;
+  if (!memOnly) {
+    try { d = await db(); } catch { memOnly = true; }
+  }
+  if (memOnly) return memTx(store, fn);
   return new Promise((resolve, reject) => {
     const t = d.transaction(store, mode);
     const s = t.objectStore(store);
@@ -47,6 +55,18 @@ async function tx(store, mode, fn) {
     t.oncomplete = () => resolve(out && 'result' in out ? out.result : undefined);
     t.onerror = () => reject(t.error);
   });
+}
+function memTx(store, fn) {
+  const m = mem[store];
+  const fake = {
+    getAll: () => ({ result: [...m.values()] }),
+    get: k => ({ result: m.get(k) }),
+    put: (v, k) => { const key = k === undefined ? v.id : k; m.set(key, v); return { result: key }; },
+    delete: k => { m.delete(k); return { result: undefined }; },
+    index: () => ({ getAll: id => ({ result: [...m.values()].filter(x => x.topicId === id) }) }),
+  };
+  const out = fn(fake);
+  return Promise.resolve(out && 'result' in out ? out.result : undefined);
 }
 const getAll = store => tx(store, 'readonly', s => s.getAll());
 const get = (store, key) => tx(store, 'readonly', s => s.get(key));
@@ -293,8 +313,13 @@ async function viewEdit(id) {
     go(`#/topik/${data.id}`);
   };
   if (topic) {
-    $('#hapus').onclick = async () => {
-      if (!confirm(`Hapus "${topic.title}" beserta semua rekamannya? Ini tidak bisa dibatalkan.`)) return;
+    $('#hapus').onclick = async e => {
+      const b = e.currentTarget;
+      if (!b.dataset.sure) {
+        b.dataset.sure = '1';
+        b.textContent = 'Ketuk lagi untuk menghapus topik dan semua rekamannya';
+        return;
+      }
       for (const a of await attemptsOf(topic.id)) {
         await del('attempts', a.id);
         if (a.hasAudio) await del('audio', a.id);
@@ -365,7 +390,7 @@ async function viewRecord(id) {
   if (!topic) return go('#/');
   let audience = pending?.topicId === id ? pending.audience : AUDIENCES[0];
   pending = null;
-  const canRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+  const canRecord = !window.PB_NO_LIVE_REC && !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
 
   app.innerHTML = `
     <div class="bar"><button class="back" data-go="#/topik/${id}" aria-label="Kembali">‹</button><span class="grow">${esc(topic.title)}</span></div>
@@ -376,9 +401,11 @@ async function viewRecord(id) {
       <div class="timer" id="tm">0:00</div>
       <div class="wave" id="wv">${'<i></i>'.repeat(20)}</div>
       ${canRecord ? '<button class="recbtn" id="rb" aria-label="Mulai rekam"><div class="ic"></div></button>' : ''}
-      <div class="hint" id="hn">${canRecord ? 'Ketuk untuk mulai merekam' : 'Browser ini tidak mendukung perekaman suara.'}</div>
+      <div class="hint" id="hn">${canRecord ? 'Ketuk untuk mulai merekam' : 'Rekam penjelasanmu dengan aplikasi perekam, lalu pilih file rekamannya di sini.'}</div>
       <div id="er"></div>
     </div>
+    <label class="btn line sm" for="up">${canRecord ? 'Atau pakai rekaman dari HP' : 'Rekam dengan aplikasi perekam HP'}</label>
+    <input type="file" id="up" accept="audio/*" capture hidden>
     <button class="btn ghost" id="fin" ${canRecord ? 'disabled' : ''}>Selesai, putar ulang</button>
     <button class="btn line sm" id="skip">Jelaskan tanpa rekaman</button>`;
 
@@ -394,11 +421,32 @@ async function viewRecord(id) {
     pending = { topicId: id, audience, blob: null, duration: 0 };
     go('#/cek');
   };
+  const fin = $('#fin'), tm = $('#tm'), hn = $('#hn');
+  let chunks = [], started = 0, result = null;
+  $('#up').onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    stopRecorder();
+    const probe = new Audio(URL.createObjectURL(file));
+    probe.onloadedmetadata = () => {
+      const d = isFinite(probe.duration) ? probe.duration : 0;
+      result = { blob: file, duration: d };
+      tm.textContent = fmtDur(d);
+      URL.revokeObjectURL(probe.src);
+    };
+    result = { blob: file, duration: 0 };
+    fin.disabled = false;
+    hn.textContent = `Rekaman "${file.name}" siap.`;
+  };
+  fin.onclick = () => {
+    if (!result) return;
+    pending = { topicId: id, audience, ...result };
+    go('#/cek');
+  };
   if (!canRecord) return;
 
-  const rb = $('#rb'), fin = $('#fin'), tm = $('#tm'), hn = $('#hn');
+  const rb = $('#rb');
   const bars = [...app.querySelectorAll('#wv i')];
-  let chunks = [], started = 0, result = null;
 
   rb.onclick = async () => {
     if (recorder) { // berhenti
@@ -445,11 +493,6 @@ async function viewRecord(id) {
     } catch (err) {
       $('#er').innerHTML = `<div class="err">Mikrofon tidak bisa dipakai (${esc(err.name || 'error')}). Izinkan akses mikrofon di pengaturan browser, atau pilih "Jelaskan tanpa rekaman".</div>`;
     }
-  };
-  fin.onclick = () => {
-    if (!result) return;
-    pending = { topicId: id, audience, ...result };
-    go('#/cek');
   };
 }
 
@@ -558,11 +601,17 @@ async function viewSchedule(id) {
   const refresh = () => { $('#gc').href = calendarLinks(topic, time).gcal; };
   refresh();
   $('#jm').onchange = e => { time = e.target.value || '19:00'; refresh(); };
-  $('#ics').onclick = () => {
-    const blob = new Blob([calendarLinks(topic, time).ics], { type: 'text/calendar' });
+  $('#ics').onclick = async () => {
+    const ics = calendarLinks(topic, time).ics;
+    const filename = `tes-ulang-${topic.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.ics`;
+    const downloads = window.claude?.use ? await window.claude.use('downloads').catch(() => null) : null;
+    if (downloads) {
+      try { await downloads.save({ filename, data: ics }); } catch { toast('Unduhan dibatalkan.'); }
+      return;
+    }
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `tes-ulang-${topic.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.ics`;
+    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+    a.download = filename;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
