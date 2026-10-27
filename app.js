@@ -216,6 +216,14 @@ Materi kursusnya saya lampirkan. Tolong bantu saya:
 }
 
 // Bagian yang bisa dibuka: cara memakai prompt + isi prompt + tautan salin.
+// Cara kerja singkat: penguji mengira app yang membuat soal, jadi dijelaskan sejak awal.
+const HOWTO = `<ol class="how3">
+    <li><b>Tulis poin dari materi.</b> Kamu sendiri yang menulis, dalam bentuk kalimat isi.</li>
+    <li><b>Jelaskan dari ingatan sambil merekam.</b> Tanpa catatan, seolah ke orang lain.</li>
+    <li><b>Putar ulang dan centang</b> poin yang benar-benar kamu sebut. App mengingatkan kapan tes ulang.</li>
+  </ol>
+  <div class="hs">App ini tidak membuat soal. Kamu yang menjelaskan, karena di situ kelihatan apa yang benar-benar kamu ingat.</div>`;
+
 function promptHelp(last) {
   return `<details class="plink"><summary><span>Cek poin isi materi dengan ChatGPT atau Claude</span></summary>
     <div class="plbody">
@@ -291,7 +299,7 @@ async function viewHome() {
   } else {
     hero = `<div class="hero"><div class="tag">Mulai dari sini</div>
       <div class="ht">Paham, atau cuma merasa paham?</div>
-      <div class="hs">Buat topik, tulis poin penting dari materimu, lalu jelaskan ulang tanpa catatan. App ini mengingatkan kapan harus tes ulang.</div>
+      ${HOWTO}
       <button class="btn" data-go="#/baru">Buat topik pertama</button></div>`;
   }
 
@@ -309,6 +317,7 @@ async function viewHome() {
         ${pill}</button>`;
     }).join('')}`).join('');
 
+  const howtoBox = all.length ? `<details class="donesec how"><summary><span class="sec">Cara kerja app ini</span><span class="chev" aria-hidden="true">›</span></summary>${HOWTO}</details>` : '';
   app.innerHTML = `
     <div class="top"><div><div class="hello">${salam}</div><div class="sub">${fmtDate(t)}</div></div>${FLOWER}</div>
     ${hero}
@@ -318,6 +327,7 @@ async function viewHome() {
         ${score(x)}
         <div class="it"><b>${esc(x.title)}</b><span>${esc(x.group || 'Tanpa kelompok')} · selesai ${fmtDate(x.done, false)}</span></div>
         <span class="pill ok">selesai</span></button>`).join('')}</details>` : ''}
+    ${howtoBox}
     <p class="foot">Data dan rekaman tersimpan di browser perangkat ini saja.</p>
     <button class="fab" data-go="#/baru">+ Topik baru</button>`;
 }
@@ -350,8 +360,9 @@ async function viewEdit(id, presetGroup) {
     return points.map((p, i) => `<div class="pt2">
       <div class="num">${i + 1}</div>
       <div class="pf">
-        <textarea class="in sm" rows="2" data-i="${i}" data-k="text" placeholder="${i === 0 ? 'Contoh: Definisi kunci: 2 unsur ILO, tidak sukarela + ancaman hukuman' : 'Poin penting berikutnya'}">${esc(p.text)}</textarea>
-        <input class="in sm" data-i="${i}" data-k="source" placeholder="Sumber: modul, halaman, slide, atau link" value="${esc(p.source)}">
+        <textarea class="in sm" rows="2" data-i="${i}" data-k="text" placeholder="${i === 0 ? 'Contoh: VLOOKUP mencari data di kolom paling kiri, lalu mengambil nilai dari kolom di kanannya' : 'Poin berikutnya, dalam satu kalimat'}">${esc(p.text)}</textarea>
+        ${p.source || p.showSrc ? `<input class="in sm" data-i="${i}" data-k="source" placeholder="Sumber: modul, halaman, slide, atau link" value="${esc(p.source)}">`
+          : `<button class="srcadd" data-src="${i}">+ sumber</button>`}
       </div>
       ${points.length > 1 ? `<button class="del" data-del="${i}" aria-label="Hapus poin ${i + 1}">×</button>` : ''}
     </div>`).join('');
@@ -359,7 +370,7 @@ async function viewEdit(id, presetGroup) {
   function groupBlock() {
     return `${names.length ? `<div class="chips">${names.map(n => `<button class="chip${!isNew && n === group ? ' on' : ''}" data-g="${esc(n)}">${esc(n)}</button>`).join('')}
         <button class="chip${isNew ? ' on' : ''}" data-g="">+ Kelompok baru</button></div>` : ''}
-      ${isNew ? `<input id="g" class="in" placeholder="Nama kelompok, contoh: Good Labor Practice, Bunpou N4" value="${esc(group)}">` : ''}`;
+      ${isNew ? `<input id="g" class="in" placeholder="Nama kelompok, contoh: Excel, Perpajakan, Bahasa Jepang" value="${esc(group)}">` : ''}`;
   }
   function formatBody() {
     if (format !== 'custom') {
@@ -402,16 +413,25 @@ async function viewEdit(id, presetGroup) {
     app.innerHTML = `${head(1)}
       <div class="fld"><span class="lbl">Kelompok materi</span><div id="gb" style="display:flex;flex-direction:column;gap:8px">${groupBlock()}</div></div>
       <div class="fld"><label for="t">Judul topik</label>
-        <input id="t" class="in" placeholder="Contoh: Forced labour" value="${esc(title)}"></div>
-      <div class="grp">Isi materi <em>poin yang wajib kamu sebut</em></div>
+        <input id="t" class="in" placeholder="Contoh: Rumus VLOOKUP" value="${esc(title)}">
+        <span class="hint">Pilih bagian kecil yang bisa kamu jelaskan dalam 1 sampai 3 menit, bukan satu bab penuh.</span></div>
+      <div class="grp">Isi materi <em>tulis sebagai kalimat isi, bukan judul</em></div>
       <div id="pts" style="display:flex;flex-direction:column;gap:10px">${pointRows()}</div>
       <button class="add" id="addpt">+ Tambah poin</button>
-      <div class="tip">Ambil poin dari materi kursus, bukan dari ingatan. Satu topik cukup 1 sampai 3 menit.</div>
+      <div class="tip">Ambil poin dari materi kursus, bukan dari ingatan. Poin "Rumus IF" sulit dicek. Poin "IF memberi satu hasil kalau syaratnya terpenuhi dan hasil lain kalau tidak" mudah dicek.</div>
       ${promptHelp('Perbaiki poin di atas kalau ada yang keliru.')}
       <button class="btn" id="next">Lanjut: cara menjelaskan</button>
       ${topic ? '<button class="btn danger sm" id="hapus">Hapus topik ini</button>' : ''}`;
     const pts = $('#pts');
     pts.onclick = e => {
+      const s = e.target.closest('[data-src]');
+      if (s) {
+        sync();
+        points[s.dataset.src].showSrc = true;
+        pts.innerHTML = pointRows();
+        pts.querySelector(`[data-i="${s.dataset.src}"][data-k="source"]`).focus();
+        return;
+      }
       const b = e.target.closest('[data-del]');
       if (!b) return;
       sync();
@@ -577,7 +597,7 @@ async function viewTopic(id) {
   const atts = (await attemptsOf(id)).reverse();
   const n = atts.length;
   const label = i => (i === n - 1 ? 'Belajar awal' : `Tes ke-${n - 1 - i}`);
-  const nextLabel = n === 0 ? 'Mulai belajar' : `Mulai tes ke-${n}`;
+  const nextLabel = n === 0 ? 'Mulai jelaskan' : `Mulai tes ke-${n}`;
 
   app.innerHTML = `
     <div class="bar"><button class="back" data-go="#/" aria-label="Kembali">‹</button><span class="grow">${esc(topic.title)}</span>
@@ -587,7 +607,7 @@ async function viewTopic(id) {
     : topic.next ? `<div class="nxt2"><div><span>Tes ulang berikut · ${relDate(topic.next)}</span><b>${fmtDate(topic.next)}</b></div>
       <button class="iconbtn" id="ndb">Ubah tanggal</button></div>
       ${datePanel(topic)}` : ''}
-    <div class="sec">Isi materi (${topic.points.length} poin)</div>
+    <div class="sec">Poin dari materi (${topic.points.length}, kamu tulis sendiri)</div>
     <details class="auto"><summary>Lihat poin <span>sebaiknya setelah tes, bukan sebelum</span></summary>
       <ol>${topic.points.map(p => `<li>${esc(p.text)}${p.source ? ` <small style="color:var(--muted)">· ${esc(p.source)}</small>` : ''}</li>`).join('')}</ol></details>
     <div class="sec">Riwayat rekaman</div>
@@ -760,7 +780,7 @@ async function viewCheck() {
 
   app.innerHTML = `
     <div class="bar"><button class="back" data-go="#/rekam/${topic.id}" aria-label="Rekam ulang">‹</button><span class="grow">Cek penjelasanmu</span></div>
-    ${url ? `<audio controls src="${url}"></audio><div class="tip">Putar ulang, lalu centang poin yang benar-benar kamu sebut.</div>` : '<div class="tip">Tanpa rekaman: centang poin yang tadi benar-benar kamu sebut dari ingatan.</div>'}
+    ${url ? `<audio controls src="${url}"></audio><div class="tip">Putar ulang. Centang hanya kalau <b>isinya</b> kamu sebut, bukan sekadar kata kuncinya.</div>` : '<div class="tip">Tanpa rekaman: centang hanya kalau isinya tadi benar-benar kamu sebut, bukan sekadar kata kuncinya.</div>'}
     <div class="scores"><div class="sc"><div class="big" id="si"></div><span>Isi materi</span></div>
       <div class="sc"><div class="big" id="sc"></div><span>Cara menjelaskan</span></div></div>
     <div class="grp">Isi materi <em>poin dari topik ini</em></div>
