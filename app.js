@@ -256,6 +256,15 @@ const app = $('#app');
 async function viewHome() {
   const all = await getAll('topics');
   const topics = all.filter(x => !x.done);
+  // Skor isi materi dari tes terakhir tiap topik, untuk lingkaran di daftar.
+  const lastAtt = {};
+  (await getAll('attempts')).sort((a, b) => a.date.localeCompare(b.date)).forEach(a => { lastAtt[a.topicId] = a; });
+  const score = (x, cls = '') => {
+    const a = lastAtt[x.id];
+    if (!a || !a.isi.length) return `<div class="dot${cls}" aria-label="Belum pernah dites">–</div>`;
+    const got = a.isi.filter(Boolean).length;
+    return `<div class="dot ring${cls}" style="--p:${Math.round(got / a.isi.length * 100)}" aria-label="Tes terakhir: ${got} dari ${a.isi.length} poin isi materi">${got}/${a.isi.length}</div>`;
+  };
   const doneList = all.filter(x => x.done).sort((a, b) => b.done.localeCompare(a.done));
   const t = today();
   const due = topics.filter(x => x.next && x.next <= t).sort((a, b) => a.next.localeCompare(b.next));
@@ -295,7 +304,7 @@ async function viewHome() {
         : isDue ? '<span class="pill due">hari ini</span>'
         : `<span class="pill${daysBetween(t, x.next) > 3 ? ' ok' : ''}">${relDate(x.next)}</span>`;
       return `<button class="item" data-go="#/topik/${x.id}">
-        <div class="dot${isDue ? ' due' : soon ? ' soon' : ''}"></div>
+        ${score(x, isDue ? ' due' : soon ? ' soon' : '')}
         <div class="it"><b>${esc(x.title)}</b><span>${x.points.length} poin · ${x.next ? `tes berikut ${fmtDate(x.next, false)}` : 'belum direkam'}</span></div>
         ${pill}</button>`;
     }).join('')}`).join('');
@@ -306,7 +315,7 @@ async function viewHome() {
     ${topics.length ? `<div class="sec">Topik saya</div>${list}` : ''}
     ${doneList.length ? `<details class="donesec"><summary><span class="sec">Selesai (${doneList.length})</span><span class="chev" aria-hidden="true">›</span></summary>
       ${doneList.map(x => `<button class="item fin" data-go="#/topik/${x.id}">
-        <div class="dot ok"></div>
+        ${score(x)}
         <div class="it"><b>${esc(x.title)}</b><span>${esc(x.group || 'Tanpa kelompok')} · selesai ${fmtDate(x.done, false)}</span></div>
         <span class="pill ok">selesai</span></button>`).join('')}</details>` : ''}
     <p class="foot">Data dan rekaman tersimpan di browser perangkat ini saja.</p>

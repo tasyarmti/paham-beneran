@@ -33,6 +33,8 @@ Bisa menjelaskan sebuah topik ke orang awam, beberapa hari kemudian, tanpa catat
 
 8. **Tandai selesai.** Topik yang sudah nempel atau ujiannya sudah lewat bisa ditandai selesai. Topik itu pindah ke bagian Selesai di paling bawah beranda, tidak dijadwalkan tes ulang lagi, dan riwayatnya tetap tersimpan. Bisa diaktifkan lagi kapan saja.
 
+Di beranda, lingkaran di kiri tiap topik menunjukkan skor isi materi dari tes terakhir (misalnya 2/5), dengan cincin yang terisi sesuai skornya. Bingkai kuning berarti tes hari ini, putus-putus berarti besok.
+
 Satu rekaman = satu percobaan untuk satu topik. Setiap topik menyimpan riwayat percobaannya (belajar awal, tes ke-1, tes ke-2, dan seterusnya), lengkap dengan rekaman, nilai, poin yang terlewat, dan catatan.
 
 ## Keputusan penting

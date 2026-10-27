@@ -51,9 +51,12 @@ a { color: var(--dark); }
 .empty { background: var(--card); border-radius: 22px; padding: 18px; font-size: 14px; color: var(--muted); text-align: center; }
 
 .item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border-radius: 22px; text-align: left; width: 100%; }
-.dot { width: 32px; height: 32px; flex: none; border-radius: 50%; background: #E9E3B0; }
-.dot.due { background: var(--yolk); }
-.dot.soon { background: var(--card2); border: 3px dashed var(--yolk); }
+/* Lingkaran skor: isi = poin isi materi yang tersebut di tes terakhir. Bingkai kuning = tes hari ini, putus-putus = besok. */
+.dot { width: 40px; height: 40px; flex: none; border-radius: 50%; background: #E9E3B0; display: grid; place-items: center; position: relative; font-size: 12px; font-weight: 900; color: var(--muted); }
+.dot.ring { background: conic-gradient(var(--dark) calc(var(--p) * 1%), #E9E3B0 0); color: var(--dark); isolation: isolate; }
+.dot.ring::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--card); z-index: -1; }
+.dot.due { outline: 3px solid var(--yolk); outline-offset: 2px; }
+.dot.soon { outline: 3px dashed var(--yolk); outline-offset: 2px; }
 .it { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .it b { font-size: 15px; }
 .it span { font-size: 12px; color: var(--muted); }
@@ -201,7 +204,6 @@ select.in { appearance: auto; }
 .plbody { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .plbody ol { margin-left: 20px; font-size: 13px; color: var(--muted); }
 .tlink { align-self: flex-start; font-size: 14px; font-weight: 800; color: var(--dark); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
-.dot.ok { background: var(--ok); }
 .donesec { margin-top: 14px; }
 .donesec > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
 .donesec > summary::-webkit-details-marker { display: none; }
