@@ -197,36 +197,33 @@ function calendarLinks(topic, time) {
   return { gcal, ics };
 }
 
-function checkPrompt(topic, audience, note) {
-  const pts = topic.points.map((p, i) => `${i + 1}. ${p.text}${p.source ? ` (sumber: ${p.source})` : ''}`).join('\n');
-  return `Saya sedang belajar topik "${topic.title}"${topic.group ? ` dari materi "${topic.group}"` : ''}. Saya membuat checklist poin penting berikut dari materi kursus saya:
+// Prompt untuk mengecek apakah poin isi materi (checklist) sudah benar, sebelum dipakai latihan.
+function checkPrompt(title, group, points) {
+  const pts = points.filter(p => p.text.trim())
+    .map((p, i) => `${i + 1}. ${p.text.trim()}${p.source.trim() ? ` (sumber: ${p.source.trim()})` : ''}`).join('\n');
+  return `Saya sedang belajar topik "${title || '(judul topik)'}"${group ? ` dari materi "${group}"` : ''}. Saya membuat checklist poin penting berikut dari materi kursus saya:
 
 ${pts || '(belum ada poin)'}
 
 Tolong bantu saya:
 1. Periksa apakah setiap poin di atas benar dan cukup tepat. Tandai yang keliru atau terlalu umum, dan jelaskan alasannya dengan bahasa sederhana.
 2. Sebutkan poin penting yang mungkin terlewat untuk topik ini. Beri tanda bahwa saya perlu mengeceknya lagi ke materi kursus saya.
-3. Jangan tuliskan penjelasan lengkap untuk saya. Saya ingin tetap berlatih menjelaskan sendiri tanpa catatan.
-
-Kalau saya menempelkan transkrip penjelasan saya di bawah, beri feedback singkat berdasarkan kerangka ini: ${caraLabels(topic, audience).map(c => c.text.toLowerCase()).join('; ')}.${note ? `\n\nCatatan saya sendiri: ${note}` : ''}
-
-Transkrip penjelasan saya (opsional):
-`;
+3. Jangan tuliskan penjelasan lengkap untuk saya. Saya ingin tetap berlatih menjelaskan sendiri tanpa catatan.`;
 }
 
-// Penjelasan tombol salin prompt, plus isi prompt untuk disalin manual kalau clipboard diblokir.
-function promptHelp(text) {
-  return `<details class="auto help"><summary>Salin prompt cek checklist <span>untuk ChatGPT atau Claude</span></summary>
-    <ol>
-      <li>Tombol "Salin prompt" di bawah menyalin pesan berisi daftar poin isi materimu.</li>
-      <li>Buka ChatGPT atau Claude, lalu tempel (paste) pesannya.</li>
-      <li>AI akan memeriksa apakah poin-poinmu sudah benar dan apa yang mungkin terlewat. AI diminta tidak menuliskan jawaban lengkap, supaya kamu tetap berlatih sendiri.</li>
-      <li>Opsional: tulis atau tempel transkrip penjelasanmu di akhir pesan untuk dapat feedback.</li>
-      <li>Kalau ada poin yang keliru, perbaiki lewat tombol Ubah di halaman topik. Feedback-nya bisa disimpan di kolom Catatan.</li>
-    </ol>
-    <label class="lbl" for="pt">Isi pesan (bisa disalin manual)</label>
-    <textarea id="pt" class="in sm" rows="5" readonly>${esc(text)}</textarea>
-    <button class="btn ghost sm" id="cp">Salin prompt</button>
+// Bagian yang bisa dibuka di form topik: cara memakai prompt + isi prompt + tautan salin.
+function promptHelp() {
+  return `<details class="plink"><summary>Cek dulu poin ini dengan ChatGPT atau Claude</summary>
+    <div class="plbody">
+      <ol>
+        <li>Ketuk "Salin prompt" di bawah. Isinya daftar poin isi materi yang kamu tulis di atas.</li>
+        <li>Buka ChatGPT atau Claude, lalu tempel (paste).</li>
+        <li>AI akan memeriksa apakah poinmu benar dan apa yang mungkin terlewat, tanpa menuliskan jawaban lengkap.</li>
+        <li>Perbaiki poin di atas kalau perlu, lalu lanjut.</li>
+      </ol>
+      <textarea id="pt" class="in sm" rows="5" readonly aria-label="Isi prompt"></textarea>
+      <button class="tlink" id="cp">Salin prompt</button>
+    </div>
   </details>`;
 }
 
@@ -386,6 +383,7 @@ async function viewEdit(id, presetGroup) {
       <div id="pts" style="display:flex;flex-direction:column;gap:10px">${pointRows()}</div>
       <button class="add" id="addpt">+ Tambah poin</button>
       <div class="tip">Ambil poin dari tujuan pembelajaran, rubrik, atau feedback ujian, jangan dari ingatan. Satu topik sebaiknya bisa dijelaskan dalam 1 sampai 3 menit. Kalau lebih, pecah jadi beberapa topik.</div>
+      ${promptHelp()}
       <button class="btn" id="next">Lanjut: cara menjelaskan</button>
       ${topic ? '<button class="btn danger sm" id="hapus">Hapus topik ini</button>' : ''}`;
     const pts = $('#pts');
@@ -412,6 +410,13 @@ async function viewEdit(id, presetGroup) {
       if (isNew) $('#g').focus();
     };
     $('#gb').oninput = e => { if (e.target.id === 'g') group = e.target.value.trim(); };
+    // Isi prompt selalu mengikuti poin terbaru di form.
+    const currentPrompt = () => {
+      sync();
+      return checkPrompt($('#t').value.trim(), isNew ? ($('#g')?.value || '').trim() : group, points);
+    };
+    $('.plink').ontoggle = e => { if (e.target.open) $('#pt').value = currentPrompt(); };
+    $('#cp').onclick = () => copyText(currentPrompt());
     $('#next').onclick = () => {
       sync();
       title = $('#t').value.trim();
@@ -546,8 +551,7 @@ async function viewTopic(id) {
       ${a.note ? `<div class="note"><b>Catatan</b>${esc(a.note)}</div>` : ''}
     </details>`).join('') : '<div class="empty">Belum ada rekaman. Jelaskan topik ini tanpa catatan untuk memulai jadwal tes ulang.</div>'}
     <button class="btn" data-go="#/rekam/${id}">${nextLabel}</button>
-    <p class="store">Rekaman tersimpan di browser perangkat ini saja</p>
-    ${promptHelp(checkPrompt(topic, atts[0]?.audience || AUDIENCES[0], atts[0]?.note))}`;
+    <p class="store">Rekaman tersimpan di browser perangkat ini saja</p>`;
 
   // Muat audio hanya saat diputar.
   app.querySelectorAll('audio[data-audio]').forEach(el => {
@@ -559,7 +563,6 @@ async function viewTopic(id) {
       el.play();
     }, { once: true });
   });
-  $('#cp').onclick = () => copyText(checkPrompt(topic, atts[0]?.audience || AUDIENCES[0], atts[0]?.note));
   if (topic.next) {
     const move = async date => {
       if (!date) { toast('Pilih tanggal dulu.'); return; }
@@ -718,7 +721,6 @@ async function viewCheck() {
     <div id="cara" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="fld"><label for="nt">Catatan (opsional)</label>
       <textarea id="nt" class="in" rows="3" placeholder="Apa yang terlewat atau keliru? Bisa juga tempel feedback dari ChatGPT/Claude."></textarea></div>
-    ${promptHelp(checkPrompt(topic, pending.audience, ''))}
     <button class="btn" id="sv">Simpan & lihat jadwal</button>`;
   draw();
 
@@ -731,7 +733,6 @@ async function viewCheck() {
   };
   $('#isi').onclick = onTick;
   $('#cara').onclick = onTick;
-  $('#cp').onclick = () => copyText(checkPrompt(topic, pending.audience, $('#nt').value.trim()));
   $('#sv').onclick = async () => {
     const isFirst = prev.length === 0;
     const pass = isi.every(Boolean);
@@ -751,6 +752,31 @@ async function viewCheck() {
     lastSaved = att.id;
     go(`#/jadwal/${topic.id}`);
   };
+}
+
+// Hasil cek penjelasan yang baru disimpan (hanya dibaca, karena jadwal sudah dihitung dari hasil ini).
+async function viewResult(id) {
+  const topic = await get('topics', id);
+  if (!topic) return go('#/');
+  const atts = await attemptsOf(id);
+  const a = atts.find(x => x.id === lastSaved) || atts[atts.length - 1];
+  if (!a) return go(`#/topik/${id}`);
+  app.innerHTML = `
+    <div class="bar"><button class="back" data-go="#/jadwal/${id}" aria-label="Kembali ke jadwal">‹</button><span class="grow">Cek penjelasanmu</span></div>
+    ${a.hasAudio ? `<audio controls preload="none" data-audio="${a.id}"></audio>` : ''}
+    <div class="scores"><div class="sc"><div class="big">${a.isi.filter(Boolean).length}<small>/${a.isi.length}</small></div><span>Isi materi</span></div>
+      <div class="sc"><div class="big">${a.cara.filter(Boolean).length}<small>/${a.cara.length}</small></div><span>Cara menjelaskan</span></div></div>
+    ${resultList('Isi materi', a.isiLabels, a.isi)}
+    ${resultList('Cara menjelaskan', a.caraLabels, a.cara)}
+    ${a.note ? `<div class="note"><b>Catatan</b>${esc(a.note)}</div>` : ''}
+    <div class="tip">Hasil ini sudah tersimpan dan dipakai untuk menghitung jadwal tes ulang.</div>
+    <button class="btn" data-go="#/jadwal/${id}">Lihat jadwal tes ulang</button>`;
+  const el = app.querySelector('audio[data-audio]');
+  if (el) el.addEventListener('play', async () => {
+    if (el.src) return;
+    const blob = await get('audio', el.dataset.audio);
+    if (blob) { el.src = URL.createObjectURL(blob); el.play(); }
+  }, { once: true });
 }
 
 async function viewSchedule(id) {
@@ -776,7 +802,7 @@ async function viewSchedule(id) {
     : 'Masih ada poin isi materi yang terlewat, jadi tes diulang besok dengan jeda yang sama.';
 
   app.innerHTML = `
-    <div class="bar"><button class="back" data-go="#/topik/${id}" aria-label="Kembali">‹</button><span class="grow">Selesai</span></div>
+    <div class="bar"><button class="back" data-go="#/hasil/${id}" aria-label="Kembali ke cek penjelasan">‹</button><span class="grow">Kembali</span></div>
     <div class="done">${FLOWER}<b>${last.hasAudio ? 'Rekaman tersimpan' : 'Hasil tersimpan'}</b>
       <span>Isi ${last.isi.filter(Boolean).length}/${last.isi.length} · Cara ${last.cara.filter(Boolean).length}/${last.cara.length}</span></div>
     <div class="tip">${msg}</div>
@@ -821,6 +847,7 @@ async function route() {
     else if (page === 'rekam') await viewRecord(id);
     else if (page === 'cek') await viewCheck();
     else if (page === 'jadwal') await viewSchedule(id);
+    else if (page === 'hasil') await viewResult(id);
     else await viewHome();
   } catch (err) {
     console.error(err);

@@ -20,7 +20,8 @@ Bisa menjelaskan sebuah topik ke orang awam, beberapa hari kemudian, tanpa catat
 ## Cara kerja
 
 1. **Buat topik.** Isi kelompok materi, judul, dan poin "Isi materi", masing-masing dengan sumbernya. Poin diambil dari tujuan pembelajaran, rubrik, atau feedback ujian, bukan dari ingatan.
-2. **Rekam penjelasan tanpa catatan.** Pilih untuk siapa penjelasannya (orang awam, atasan, junior, teman sekelas). Catatan disembunyikan selama merekam.
+2. **Pilih format cara menjelaskan (langkah 2 form topik).** Umum, Studi kasus, atau Grammar bahasa (poin tetap, dengan penjelasan tiap poin), atau Atur sendiri dengan nama format sendiri. Format dipilih per topik.
+3. **Rekam penjelasan tanpa catatan.** Pilih untuk siapa penjelasannya (orang awam, atasan, junior, teman sekelas). Catatan disembunyikan selama merekam.
 3. **Putar ulang dan centang.** Checklist dibagi dua:
    - **Isi materi:** poin dari topik itu. Bagian ini menguji ingatan.
    - **Cara menjelaskan:** 5 poin tetap yang sama untuk semua topik (kesimpulan di awal, konsep diterapkan ke contoh atau kasus, jawab keberatan pendengar, rekomendasi, bahasa bisa dipahami pendengar).
@@ -28,7 +29,7 @@ Bisa menjelaskan sebuah topik ke orang awam, beberapa hari kemudian, tanpa catat
 4. **Catatan.** Kolom bebas untuk hal yang disadari sendiri atau feedback dari ChatGPT/Claude.
 5. **Jadwal tes ulang.** Jeda 1, 3, 7, 14, lalu 30 hari. Kalau masih ada poin isi materi yang terlewat, tes diulang besok dengan jeda yang sama. Tanggal bisa diubah manual, misalnya menjelang ujian.
 6. **Pengingat.** Tombol "Tambah ke Google Calendar" dan unduh file .ics, ditambah banner di beranda.
-7. **Salin prompt cek checklist.** Menyalin prompt siap tempel ke ChatGPT/Claude untuk memeriksa apakah poin checklist sudah benar. Prompt ini meminta AI tidak menuliskan penjelasan lengkap, supaya latihan menjelaskan tetap dilakukan sendiri.
+7. **Cek poin dengan ChatGPT/Claude.** Di form topik, ada tautan yang bisa dibuka berisi prompt siap tempel untuk memeriksa apakah poin isi materi sudah benar dan apa yang terlewat. Prompt meminta AI tidak menuliskan penjelasan lengkap, supaya latihan menjelaskan tetap dilakukan sendiri. Fitur ini hanya ada saat membuat atau mengubah poin, karena gunanya mengecek checklist, bukan menilai penjelasan.
 
 Satu rekaman = satu percobaan untuk satu topik. Setiap topik menyimpan riwayat percobaannya (belajar awal, tes ke-1, tes ke-2, dan seterusnya), lengkap dengan rekaman, nilai, poin yang terlewat, dan catatan.
 
