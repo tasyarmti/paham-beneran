@@ -29,7 +29,7 @@ Bisa menjelaskan sebuah topik ke orang awam, beberapa hari kemudian, tanpa catat
 4. **Catatan.** Kolom bebas untuk hal yang disadari sendiri atau feedback dari ChatGPT/Claude.
 5. **Jadwal tes ulang.** Jeda 1, 3, 7, 14, lalu 30 hari. Kalau masih ada poin isi materi yang terlewat, tes diulang besok dengan jeda yang sama. Tanggal bisa diubah manual, misalnya menjelang ujian.
 6. **Pengingat.** Tombol "Tambah ke Google Calendar" dan unduh file .ics, ditambah banner di beranda.
-7. **Cek poin dengan ChatGPT/Claude.** Di form topik, ada tautan yang bisa dibuka berisi prompt siap tempel untuk memeriksa apakah poin isi materi sudah benar dan apa yang terlewat. Prompt meminta AI tidak menuliskan penjelasan lengkap, supaya latihan menjelaskan tetap dilakukan sendiri. Fitur ini hanya ada saat membuat atau mengubah poin, karena gunanya mengecek checklist, bukan menilai penjelasan.
+7. **Cek poin dengan ChatGPT/Claude.** Di form topik, ada tautan yang bisa dibuka berisi prompt siap tempel untuk memeriksa apakah poin isi materi sudah benar dan apa yang terlewat. Pengguna diminta melampirkan materi kursusnya, supaya AI membandingkan poin dengan materi itu, bukan dengan pengetahuannya sendiri. Prompt meminta AI tidak menuliskan penjelasan lengkap, supaya latihan menjelaskan tetap dilakukan sendiri. Fitur ini hanya ada saat membuat atau mengubah poin, karena gunanya mengecek checklist, bukan menilai penjelasan.
 
 8. **Tandai selesai.** Topik yang sudah nempel atau ujiannya sudah lewat bisa ditandai selesai. Topik itu pindah ke bagian Selesai di paling bawah beranda, tidak dijadwalkan tes ulang lagi, dan riwayatnya tetap tersimpan. Bisa diaktifkan lagi kapan saja.
 
