@@ -31,6 +31,8 @@ Bisa menjelaskan sebuah topik ke orang awam, beberapa hari kemudian, tanpa catat
 6. **Pengingat.** Tombol "Tambah ke Google Calendar" dan unduh file .ics, ditambah banner di beranda.
 7. **Cek poin dengan ChatGPT/Claude.** Di form topik, ada tautan yang bisa dibuka berisi prompt siap tempel untuk memeriksa apakah poin isi materi sudah benar dan apa yang terlewat. Prompt meminta AI tidak menuliskan penjelasan lengkap, supaya latihan menjelaskan tetap dilakukan sendiri. Fitur ini hanya ada saat membuat atau mengubah poin, karena gunanya mengecek checklist, bukan menilai penjelasan.
 
+8. **Tandai selesai.** Topik yang sudah nempel atau ujiannya sudah lewat bisa ditandai selesai. Topik itu pindah ke bagian Selesai di paling bawah beranda, tidak dijadwalkan tes ulang lagi, dan riwayatnya tetap tersimpan. Bisa diaktifkan lagi kapan saja.
+
 Satu rekaman = satu percobaan untuk satu topik. Setiap topik menyimpan riwayat percobaannya (belajar awal, tes ke-1, tes ke-2, dan seterusnya), lengkap dengan rekaman, nilai, poin yang terlewat, dan catatan.
 
 ## Keputusan penting

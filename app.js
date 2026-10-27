@@ -251,7 +251,9 @@ function stopRecorder() {
 const app = $('#app');
 
 async function viewHome() {
-  const topics = await getAll('topics');
+  const all = await getAll('topics');
+  const topics = all.filter(x => !x.done);
+  const doneList = all.filter(x => x.done).sort((a, b) => b.done.localeCompare(a.done));
   const t = today();
   const due = topics.filter(x => x.next && x.next <= t).sort((a, b) => a.next.localeCompare(b.next));
   const groups = {};
@@ -269,7 +271,7 @@ async function viewHome() {
       <div class="hs">${first.next < t ? relDate(first.next) : 'Jadwal hari ini'} · jelaskan tanpa melihat catatan</div>
       <button class="btn" data-go="#/rekam/${first.id}">Mulai tanpa catatan</button>
     </div>`;
-  } else if (topics.length) {
+  } else if (all.length) {
     const nextOne = topics.filter(x => x.next).sort((a, b) => a.next.localeCompare(b.next))[0];
     hero = `<div class="hero"><div class="tag">Belum ada tes ulang hari ini</div>
       <div class="ht">Santai dulu</div>
@@ -299,6 +301,11 @@ async function viewHome() {
     <div class="top"><div><div class="hello">${salam}</div><div class="sub">${fmtDate(t)}</div></div>${FLOWER}</div>
     ${hero}
     ${topics.length ? `<div class="sec">Topik saya</div>${list}` : ''}
+    ${doneList.length ? `<details class="donesec"><summary><span class="sec">Selesai (${doneList.length})</span><span class="chev" aria-hidden="true">›</span></summary>
+      ${doneList.map(x => `<button class="item fin" data-go="#/topik/${x.id}">
+        <div class="dot ok"></div>
+        <div class="it"><b>${esc(x.title)}</b><span>${esc(x.group || 'Tanpa kelompok')} · selesai ${fmtDate(x.done, false)}</span></div>
+        <span class="pill ok">selesai</span></button>`).join('')}</details>` : ''}
     <p class="foot">Data dan rekaman tersimpan di browser perangkat ini saja.</p>
     <button class="fab" data-go="#/baru">+ Topik baru</button>`;
 }
@@ -554,7 +561,9 @@ async function viewTopic(id) {
   app.innerHTML = `
     <div class="bar"><button class="back" data-go="#/" aria-label="Kembali">‹</button><span class="grow">${esc(topic.title)}</span>
       <button class="iconbtn" data-go="#/edit/${id}">Ubah</button></div>
-    ${topic.next ? `<div class="nxt2"><div><span>Tes ulang berikut · ${relDate(topic.next)}</span><b>${fmtDate(topic.next)}</b></div>
+    ${topic.done ? `<div class="nxt2 donebox"><div><span>Topik selesai · ${fmtDate(topic.done, false)}</span><b>Tanpa jadwal tes ulang</b></div>
+      <button class="iconbtn" id="undone">Aktifkan lagi</button></div>`
+    : topic.next ? `<div class="nxt2"><div><span>Tes ulang berikut · ${relDate(topic.next)}</span><b>${fmtDate(topic.next)}</b></div>
       <button class="iconbtn" id="ndb">Ubah tanggal</button></div>
       ${datePanel(topic)}` : ''}
     <div class="sec">Isi materi (${topic.points.length} poin)</div>
@@ -573,7 +582,9 @@ async function viewTopic(id) {
     </details>`).join('') : '<div class="empty">Belum ada rekaman. Jelaskan topik ini tanpa catatan untuk memulai jadwal tes ulang.</div>'}
     <button class="btn" data-go="#/rekam/${id}">${nextLabel}</button>
     <p class="store">Rekaman tersimpan di browser perangkat ini saja</p>
-    ${promptHelp('Ketuk "Salin prompt" di bawah. Isinya daftar poin isi materi topik ini.', 'Kalau ada poin yang keliru, perbaiki lewat tombol Ubah di atas.')}`;
+    ${promptHelp('Ketuk "Salin prompt" di bawah. Isinya daftar poin isi materi topik ini.', 'Kalau ada poin yang keliru, perbaiki lewat tombol Ubah di atas.')}
+    ${topic.done ? '' : `<div class="donecta"><button class="btn ghost sm" id="markdone">✓ Tandai selesai</button>
+      <span class="hint">Untuk topik yang sudah nempel atau ujiannya sudah lewat. Topik pindah ke bagian Selesai di bawah beranda dan tidak dijadwalkan tes ulang lagi. Riwayat tetap tersimpan.</span></div>`}`;
 
   // Muat audio hanya saat diputar.
   app.querySelectorAll('audio[data-audio]').forEach(el => {
@@ -585,7 +596,16 @@ async function viewTopic(id) {
       el.play();
     }, { once: true });
   });
-  if (topic.next) bindDatePanel(topic, () => viewTopic(id));
+  if (topic.next && !topic.done) bindDatePanel(topic, () => viewTopic(id));
+  const setDone = async val => {
+    if (val) topic.done = today(); else delete topic.done;
+    if (!val && topic.next && topic.next < today()) topic.next = today();
+    await put('topics', topic);
+    toast(val ? 'Topik ditandai selesai.' : 'Topik aktif lagi.');
+    viewTopic(id);
+  };
+  if ($('#markdone')) $('#markdone').onclick = () => setDone(true);
+  if ($('#undone')) $('#undone').onclick = () => setDone(false);
   bindPrompt(() => checkPrompt(topic.title, topic.group, topic.points));
 }
 
