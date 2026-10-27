@@ -13,10 +13,10 @@ const FORMATS = {
   umum: {
     name: 'Umum', desc: 'Konsep, definisi, teori',
     items: [
-      { text: 'Mulai dari intinya', hint: 'Kalimat pertama langsung menjawab "apa itu?". Contoh: "Forced labour adalah kerja yang dipaksa dengan ancaman hukuman."' },
+      { text: 'Mulai dari intinya', hint: 'Kalimat pertama langsung menjawab "apa itu?" dalam satu kalimat, sebelum masuk ke detail.' },
       { text: 'Contoh buatan sendiri', hint: 'Pakai contoh dari pengalaman atau pekerjaanmu, bukan menyalin contoh dari materi.' },
-      { text: 'Kapan berlaku dan kapan tidak', hint: 'Sebut batas atau pengecualiannya. Contoh: "Lembur belum tentu forced labour kalau pekerja bebas menolak."' },
-      { text: 'Jawab satu "kenapa?"', hint: 'Jelaskan alasan di baliknya, bukan hanya apa. Contoh: kenapa aturan ini penting untuk perusahaan.' },
+      { text: 'Kapan berlaku dan kapan tidak', hint: 'Sebut batas atau pengecualiannya: situasi yang sering dikira sama, padahal berbeda.' },
+      { text: 'Jawab satu "kenapa?"', hint: 'Jelaskan alasan atau manfaatnya, bukan hanya apa. Contoh: kenapa konsep ini penting di pekerjaan.' },
       PLAIN,
     ],
   },
@@ -320,8 +320,12 @@ async function viewEdit(id, presetGroup) {
   function caraBlock() {
     return `<div class="chips">${Object.entries(FORMATS).map(([k, f]) => `<button class="chip${k === format ? ' on' : ''}" data-f="${k}">${f.name}</button>`).join('')}</div>
       <div class="hs">${FORMATS[format].desc}. Format ini berlaku untuk semua topik di kelompok ${group ? `"${esc(group)}"` : 'ini'}.</div>
+      <div class="guide"><b>Apa yang ditulis di sini?</b>
+        Kebiasaan yang ingin kamu cek di setiap penjelasan, apa pun topiknya. Tulis sebagai hal yang bisa dijawab "ya" atau "tidak" saat mendengar ulang rekamanmu.
+        <span class="ok">Pas: "Mulai dari intinya", "Pakai contoh sendiri", "Selesai dalam 2 menit"</span>
+        <span class="no">Kurang pas: "Definisi forced labour". Itu isi materi, jadi tulis di bagian Isi materi.</span></div>
       ${cara.map((c, i) => `<div class="cr">
-        <div class="pf"><input class="in sm" data-c="${i}" value="${esc(c.text)}" aria-label="Poin cara menjelaskan ${i + 1}">
+        <div class="pf"><input class="in sm" data-c="${i}" value="${esc(c.text)}" placeholder="Contoh: Pakai contoh sendiri" aria-label="Poin cara menjelaskan ${i + 1}">
           ${c.hint ? `<small class="hint2">${esc(c.hint)}</small>` : ''}</div>
         ${cara.length > 1 ? `<button class="del" data-cdel="${i}" aria-label="Hapus poin cara ${i + 1}">×</button>` : ''}
       </div>`).join('')}
@@ -344,7 +348,11 @@ async function viewEdit(id, presetGroup) {
 
   const pts = $('#pts');
   const sync = () => pts.querySelectorAll('[data-i]').forEach(el => { points[el.dataset.i][el.dataset.k] = el.value; });
-  const syncCara = () => app.querySelectorAll('[data-c]').forEach(el => { cara[el.dataset.c].text = el.value; });
+  // Petunjuk bawaan hanya cocok untuk teks bawaannya, jadi dihapus begitu poinnya diubah.
+  const syncCara = () => app.querySelectorAll('[data-c]').forEach(el => {
+    const c = cara[el.dataset.c];
+    if (c.text !== el.value) { c.text = el.value; c.hint = ''; }
+  });
   const redrawCara = () => {
     $('#cbody').innerHTML = caraBlock();
     $('#cb summary span').textContent = `format ${FORMATS[format].name} · ${cara.length} poin`;
@@ -381,6 +389,10 @@ async function viewEdit(id, presetGroup) {
     $('#gb').innerHTML = groupBlock();
     if (isNew) $('#g').focus();
     redrawCara();
+  };
+  $('#cbody').oninput = e => {
+    if (!e.target.dataset.c) return;
+    e.target.parentElement.querySelector('.hint2')?.remove();
   };
   $('#gb').oninput = e => { if (e.target.id === 'g') group = e.target.value.trim(); };
   $('#cbody').onclick = e => {
