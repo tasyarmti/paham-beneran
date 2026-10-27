@@ -154,15 +154,13 @@ function toast(msg) {
 async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);
+    toast('Prompt tersalin. Tempel di ChatGPT atau Claude.');
   } catch {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    ta.remove();
+    // Clipboard diblokir: pilih teksnya supaya bisa disalin manual.
+    const pt = $('#pt');
+    if (pt) { pt.value = text; pt.focus(); pt.select(); }
+    toast('Teks sudah dipilih. Salin manual: tekan lama lalu Salin, atau Ctrl+C.');
   }
-  toast('Prompt tersalin. Tempel di ChatGPT atau Claude.');
 }
 const go = hash => { location.hash = hash; };
 const caraLabels = (topic, audience) => caraOf(topic).map(c => ({
@@ -218,9 +216,9 @@ Transkrip penjelasan saya (opsional):
 
 // Penjelasan tombol salin prompt, plus isi prompt untuk disalin manual kalau clipboard diblokir.
 function promptHelp(text) {
-  return `<details class="auto help"><summary>Apa gunanya tombol ini?</summary>
+  return `<details class="auto help"><summary>Salin prompt cek checklist <span>untuk ChatGPT atau Claude</span></summary>
     <ol>
-      <li>Tombol menyalin pesan berisi daftar poin isi materimu.</li>
+      <li>Tombol "Salin prompt" di bawah menyalin pesan berisi daftar poin isi materimu.</li>
       <li>Buka ChatGPT atau Claude, lalu tempel (paste) pesannya.</li>
       <li>AI akan memeriksa apakah poin-poinmu sudah benar dan apa yang mungkin terlewat. AI diminta tidak menuliskan jawaban lengkap, supaya kamu tetap berlatih sendiri.</li>
       <li>Opsional: tulis atau tempel transkrip penjelasanmu di akhir pesan untuk dapat feedback.</li>
@@ -228,6 +226,7 @@ function promptHelp(text) {
     </ol>
     <label class="lbl" for="pt">Isi pesan (bisa disalin manual)</label>
     <textarea id="pt" class="in sm" rows="5" readonly>${esc(text)}</textarea>
+    <button class="btn ghost sm" id="cp">Salin prompt</button>
   </details>`;
 }
 
@@ -536,7 +535,7 @@ async function viewTopic(id) {
     <details class="auto"><summary>Lihat poin <span>sebaiknya setelah tes, bukan sebelum</span></summary>
       <ol>${topic.points.map(p => `<li>${esc(p.text)}${p.source ? ` <small style="color:var(--muted)">· ${esc(p.source)}</small>` : ''}</li>`).join('')}</ol></details>
     <div class="sec">Riwayat rekaman</div>
-    ${n ? atts.map((a, i) => `<details class="att"${i === 0 ? ' open' : ''}>
+    ${n ? atts.map((a, i) => `<details class="att">
       <summary class="ah"><div class="at"><b>${label(i)} · ${fmtDate(a.date.slice(0, 10), false)}</b>
         <span>${a.duration ? fmtDur(a.duration) + ' · ' : ''}untuk ${esc(a.audience.toLowerCase())}</span></div>
         <div class="sp"><em>Isi ${a.isi.filter(Boolean).length}/${a.isi.length}</em><em>Cara ${a.cara.filter(Boolean).length}/${a.cara.length}</em></div>
@@ -546,10 +545,9 @@ async function viewTopic(id) {
       ${resultList('Cara menjelaskan', a.caraLabels, a.cara)}
       ${a.note ? `<div class="note"><b>Catatan</b>${esc(a.note)}</div>` : ''}
     </details>`).join('') : '<div class="empty">Belum ada rekaman. Jelaskan topik ini tanpa catatan untuk memulai jadwal tes ulang.</div>'}
-    <button class="btn ghost sm" id="cp">Salin prompt cek checklist</button>
-    ${promptHelp(checkPrompt(topic, atts[0]?.audience || AUDIENCES[0], atts[0]?.note))}
+    <button class="btn" data-go="#/rekam/${id}">${nextLabel}</button>
     <p class="store">Rekaman tersimpan di browser perangkat ini saja</p>
-    <button class="btn" data-go="#/rekam/${id}">${nextLabel}</button>`;
+    ${promptHelp(checkPrompt(topic, atts[0]?.audience || AUDIENCES[0], atts[0]?.note))}`;
 
   // Muat audio hanya saat diputar.
   app.querySelectorAll('audio[data-audio]').forEach(el => {
@@ -720,7 +718,6 @@ async function viewCheck() {
     <div id="cara" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="fld"><label for="nt">Catatan (opsional)</label>
       <textarea id="nt" class="in" rows="3" placeholder="Apa yang terlewat atau keliru? Bisa juga tempel feedback dari ChatGPT/Claude."></textarea></div>
-    <button class="btn ghost sm" id="cp">Salin prompt cek checklist</button>
     ${promptHelp(checkPrompt(topic, pending.audience, ''))}
     <button class="btn" id="sv">Simpan & lihat jadwal</button>`;
   draw();
