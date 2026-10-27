@@ -211,25 +211,30 @@ Tolong bantu saya:
 3. Jangan tuliskan penjelasan lengkap untuk saya. Saya ingin tetap berlatih menjelaskan sendiri tanpa catatan.`;
 }
 
-// Bagian yang bisa dibuka di form topik: cara memakai prompt + isi prompt + tautan salin.
-function promptHelp() {
-  return `<details class="plink"><summary>Cek dulu poin ini dengan ChatGPT atau Claude</summary>
+// Bagian yang bisa dibuka: cara memakai prompt + isi prompt + tautan salin.
+function promptHelp(first, last) {
+  return `<details class="plink"><summary>Cek poin isi materi dengan ChatGPT atau Claude</summary>
     <div class="plbody">
       <ol>
-        <li>Ketuk "Salin prompt" di bawah. Isinya daftar poin isi materi yang kamu tulis di atas.</li>
+        <li>${first}</li>
         <li>Buka ChatGPT atau Claude, lalu tempel (paste).</li>
         <li>AI akan memeriksa apakah poinmu benar dan apa yang mungkin terlewat, tanpa menuliskan jawaban lengkap.</li>
-        <li>Perbaiki poin di atas kalau perlu, lalu lanjut.</li>
+        <li>${last}</li>
       </ol>
       <textarea id="pt" class="in sm" rows="5" readonly aria-label="Isi prompt"></textarea>
       <button class="tlink" id="cp">Salin prompt</button>
     </div>
   </details>`;
 }
+function bindPrompt(build) {
+  $('.plink').ontoggle = e => { if (e.target.open) $('#pt').value = build(); };
+  $('#cp').onclick = () => copyText(build());
+}
 
 /* ---------- State sementara ---------- */
 let pending = null;   // hasil rekaman yang belum disimpan
 let recorder = null;  // { mr, stream, ctx, raf, timer }
+let reminderTime = '19:00';
 let lastSaved = null; // attempt id terakhir untuk layar jadwal
 
 function stopRecorder() {
@@ -383,7 +388,7 @@ async function viewEdit(id, presetGroup) {
       <div id="pts" style="display:flex;flex-direction:column;gap:10px">${pointRows()}</div>
       <button class="add" id="addpt">+ Tambah poin</button>
       <div class="tip">Ambil poin dari tujuan pembelajaran, rubrik, atau feedback ujian, jangan dari ingatan. Satu topik sebaiknya bisa dijelaskan dalam 1 sampai 3 menit. Kalau lebih, pecah jadi beberapa topik.</div>
-      ${promptHelp()}
+      ${promptHelp('Ketuk "Salin prompt" di bawah. Isinya daftar poin isi materi yang kamu tulis di atas.', 'Perbaiki poin di atas kalau perlu, lalu lanjut.')}
       <button class="btn" id="next">Lanjut: cara menjelaskan</button>
       ${topic ? '<button class="btn danger sm" id="hapus">Hapus topik ini</button>' : ''}`;
     const pts = $('#pts');
@@ -415,8 +420,7 @@ async function viewEdit(id, presetGroup) {
       sync();
       return checkPrompt($('#t').value.trim(), isNew ? ($('#g')?.value || '').trim() : group, points);
     };
-    $('.plink').ontoggle = e => { if (e.target.open) $('#pt').value = currentPrompt(); };
-    $('#cp').onclick = () => copyText(currentPrompt());
+    bindPrompt(currentPrompt);
     $('#next').onclick = () => {
       sync();
       title = $('#t').value.trim();
@@ -510,6 +514,29 @@ async function viewEdit(id, presetGroup) {
   renderStep1();
 }
 
+// Panel ubah tanggal tes ulang, dipakai di halaman topik dan halaman jadwal.
+function datePanel(topic) {
+  return `<div class="att" id="ndp" hidden>
+    <span class="lbl">Pindahkan tes ulang ke</span>
+    <div class="chips">${[1, 3, 7].map(d => `<button class="chip" data-d="${addDays(today(), d)}">${d === 1 ? 'Besok' : `${d} hari lagi`}</button>`).join('')}</div>
+    <div class="row2"><input type="date" id="nd" class="in" value="${topic.next}" min="${today()}" aria-label="Tanggal tes ulang">
+      <button class="btn sm" id="nds">Simpan</button></div>
+    <span class="hint">Jadwal otomatis tetap berjalan lagi setelah tes berikutnya.</span>
+  </div>`;
+}
+function bindDatePanel(topic, done) {
+  const move = async date => {
+    if (!date) { toast('Pilih tanggal dulu.'); return; }
+    topic.next = date;
+    await put('topics', topic);
+    toast(`Tes ulang dipindah ke ${fmtDate(date)}.`);
+    done();
+  };
+  $('#ndb').onclick = () => { $('#ndp').hidden = !$('#ndp').hidden; };
+  $('#ndp').onclick = e => { const c = e.target.closest('[data-d]'); if (c) move(c.dataset.d); };
+  $('#nds').onclick = () => move($('#nd').value);
+}
+
 function resultList(title, labels, ticks) {
   if (!labels?.length) return '';
   return `<div class="res"><span class="lbl">${title}</span>${labels.map((l, i) => `<div class="${ticks[i] ? 'hit' : 'miss'}">
@@ -529,13 +556,7 @@ async function viewTopic(id) {
       <button class="iconbtn" data-go="#/edit/${id}">Ubah</button></div>
     ${topic.next ? `<div class="nxt2"><div><span>Tes ulang berikut · ${relDate(topic.next)}</span><b>${fmtDate(topic.next)}</b></div>
       <button class="iconbtn" id="ndb">Ubah tanggal</button></div>
-      <div class="att" id="ndp" hidden>
-        <span class="lbl">Pindahkan tes ulang ke</span>
-        <div class="chips">${[1, 3, 7].map(d => `<button class="chip" data-d="${addDays(today(), d)}">${d === 1 ? 'Besok' : `${d} hari lagi`}</button>`).join('')}</div>
-        <div class="row2"><input type="date" id="nd" class="in" value="${topic.next}" min="${today()}" aria-label="Tanggal tes ulang">
-          <button class="btn sm" id="nds">Simpan</button></div>
-        <span class="hint">Jadwal otomatis tetap berjalan lagi setelah tes berikutnya.</span>
-      </div>` : ''}
+      ${datePanel(topic)}` : ''}
     <div class="sec">Isi materi (${topic.points.length} poin)</div>
     <details class="auto"><summary>Lihat poin <span>sebaiknya setelah tes, bukan sebelum</span></summary>
       <ol>${topic.points.map(p => `<li>${esc(p.text)}${p.source ? ` <small style="color:var(--muted)">· ${esc(p.source)}</small>` : ''}</li>`).join('')}</ol></details>
@@ -551,7 +572,8 @@ async function viewTopic(id) {
       ${a.note ? `<div class="note"><b>Catatan</b>${esc(a.note)}</div>` : ''}
     </details>`).join('') : '<div class="empty">Belum ada rekaman. Jelaskan topik ini tanpa catatan untuk memulai jadwal tes ulang.</div>'}
     <button class="btn" data-go="#/rekam/${id}">${nextLabel}</button>
-    <p class="store">Rekaman tersimpan di browser perangkat ini saja</p>`;
+    <p class="store">Rekaman tersimpan di browser perangkat ini saja</p>
+    ${promptHelp('Ketuk "Salin prompt" di bawah. Isinya daftar poin isi materi topik ini.', 'Kalau ada poin yang keliru, perbaiki lewat tombol Ubah di atas.')}`;
 
   // Muat audio hanya saat diputar.
   app.querySelectorAll('audio[data-audio]').forEach(el => {
@@ -563,18 +585,8 @@ async function viewTopic(id) {
       el.play();
     }, { once: true });
   });
-  if (topic.next) {
-    const move = async date => {
-      if (!date) { toast('Pilih tanggal dulu.'); return; }
-      topic.next = date;
-      await put('topics', topic);
-      toast(`Tes ulang dipindah ke ${fmtDate(date)}.`);
-      viewTopic(id);
-    };
-    $('#ndb').onclick = () => { $('#ndp').hidden = !$('#ndp').hidden; };
-    $('#ndp').onclick = e => { const c = e.target.closest('[data-d]'); if (c) move(c.dataset.d); };
-    $('#nds').onclick = () => move($('#nd').value);
-  }
+  if (topic.next) bindDatePanel(topic, () => viewTopic(id));
+  bindPrompt(() => checkPrompt(topic.title, topic.group, topic.points));
 }
 
 async function viewRecord(id) {
@@ -786,13 +798,16 @@ async function viewSchedule(id) {
   const last = atts.find(a => a.id === lastSaved) || atts[atts.length - 1];
   if (!last) return go(`#/topik/${id}`);
   const t = today();
-  let time = '19:00';
+  let time = reminderTime;
 
   // Garis waktu: jeda yang sudah lewat, jadwal berikut, lalu perkiraan sisanya.
   let cursor = topic.next;
   const tl = INTERVALS.map((d, i) => {
     if (i < topic.stage) return `<div class="tli ok"><i></i><b>Jeda ${d} hari</b><span>selesai</span></div>`;
-    if (i === topic.stage) return `<div class="tli now"><i></i><b>Jeda ${d} hari</b><span>${fmtDate(topic.next)}${daysBetween(t, topic.next) === 1 && !last.pass && !last.first ? ' · diulang besok' : ''}</span></div>`;
+    if (i === topic.stage) {
+      const retry = !last.pass && !last.first && daysBetween(t, topic.next) === 1;
+      return `<div class="tli now"><i></i><b>Jeda ${d} hari</b><span>${retry ? `ulang besok dulu, ${fmtDate(topic.next)}` : fmtDate(topic.next)}</span></div>`;
+    }
     cursor = addDays(cursor, d);
     return `<div class="tli"><i></i><b>Jeda ${d} hari</b><span>perkiraan ${fmtDate(cursor, false)}</span></div>`;
   }).join('');
@@ -809,6 +824,8 @@ async function viewSchedule(id) {
     ${last.missed.length ? `<div class="note"><b>Terlewat</b>${esc(last.missed.join('; '))}</div>` : ''}
     <div class="grp">Jadwal tes ulang <em>tanpa lihat catatan</em></div>
     <div class="tl">${tl}</div>
+    <button class="tlink" id="ndb">Ubah tanggal tes ulang</button>
+    ${datePanel(topic)}
     <div class="fld"><label for="jm">Jam pengingat</label><select id="jm" class="in">${
       Array.from({ length: 35 }, (_, k) => `${pad(5 + Math.floor(k / 2))}:${k % 2 ? '30' : '00'}`)
         .map(v => `<option${v === time ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
@@ -818,7 +835,8 @@ async function viewSchedule(id) {
 
   const refresh = () => { $('#gc').href = calendarLinks(topic, time).gcal; };
   refresh();
-  $('#jm').onchange = e => { time = e.target.value || '19:00'; refresh(); };
+  $('#jm').onchange = e => { time = reminderTime = e.target.value || '19:00'; refresh(); };
+  bindDatePanel(topic, () => viewSchedule(id));
   $('#ics').onclick = async () => {
     const ics = calendarLinks(topic, time).ics;
     const filename = `tes-ulang-${topic.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.ics`;
