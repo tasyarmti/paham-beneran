@@ -475,7 +475,7 @@ async function viewEdit(id, presetGroup) {
   function renderStep2() {
     app.innerHTML = `${head(2)}
       <div class="hero"><div class="tag">Cara menjelaskan</div>
-        <div class="hs"><b>Isi materi</b> = apa yang harus kamu sebut. <b>Cara menjelaskan</b> = bagaimana kamu menyampaikannya, misalnya mulai dari intinya. Pilih kerangka yang paling cocok untuk topik "${esc(title)}".</div></div>
+        <div class="hs"><b>Isi materi</b> = apa yang harus kamu sebut.<br><b>Cara menjelaskan</b> = bagaimana kamu menyampaikannya, misalnya mulai dari intinya. Pilih kerangka yang paling cocok untuk topik "${esc(title)}".</div></div>
       <div id="fc">${formatChips()}</div>
       <div id="fb" style="display:flex;flex-direction:column;gap:10px">${formatBody()}</div>
       <div class="row2"><button class="btn line" id="prev2">Kembali</button><button class="btn" id="save">Simpan topik</button></div>`;
