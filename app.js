@@ -213,7 +213,7 @@ Tolong bantu saya:
 
 // Bagian yang bisa dibuka: cara memakai prompt + isi prompt + tautan salin.
 function promptHelp(first, last) {
-  return `<details class="plink"><summary>Cek poin isi materi dengan ChatGPT atau Claude</summary>
+  return `<details class="plink"><summary><span>Cek poin isi materi dengan ChatGPT atau Claude</span></summary>
     <div class="plbody">
       <ol>
         <li>${first}</li>
@@ -222,7 +222,7 @@ function promptHelp(first, last) {
         <li>${last}</li>
       </ol>
       <textarea id="pt" class="in sm" rows="5" readonly aria-label="Isi prompt"></textarea>
-      <button class="tlink" id="cp">Salin prompt</button>
+      <button class="btn ghost sm" id="cp">Salin prompt</button>
     </div>
   </details>`;
 }

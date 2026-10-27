@@ -191,10 +191,13 @@ select.in { appearance: auto; }
 .row2 input.in { min-width: 0; }
 [hidden] { display: none !important; }
 #ndp .chip { background: #fff; }
-.plink > summary { list-style: none; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--dark); text-decoration: underline; text-underline-offset: 3px; padding: 2px 0; }
+/* Tautan "Cek poin": panah ▸ berputar saat dibuka */
+.plink > summary { list-style: none; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 8px; padding: 2px 0; }
 .plink > summary::-webkit-details-marker { display: none; }
-.plink > summary::after { content: " ›"; display: inline-block; transition: transform .15s; }
-.plink[open] > summary::after { transform: rotate(90deg); }
+.plink > summary::before { content: "▸"; font-size: 16px; line-height: 1; transition: transform .15s; }
+.plink[open] > summary::before { transform: rotate(90deg); }
+.plink > summary span { text-decoration: underline; text-underline-offset: 3px; }
+#pt { background: #fff; font-size: 13px; line-height: 1.45; scrollbar-width: thin; scrollbar-color: var(--yolk) transparent; }
 .plbody { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .plbody ol { margin-left: 20px; font-size: 13px; color: var(--muted); }
 .tlink { align-self: flex-start; font-size: 14px; font-weight: 800; color: var(--dark); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
