@@ -208,20 +208,20 @@ function checkPrompt(title, group, points) {
 
 ${pts || '(belum ada poin)'}
 
-Tolong bantu saya:
-1. Periksa apakah setiap poin di atas benar dan cukup tepat. Tandai yang keliru atau terlalu umum, dan jelaskan alasannya dengan bahasa sederhana.
-2. Sebutkan poin penting yang mungkin terlewat untuk topik ini. Beri tanda bahwa saya perlu mengeceknya lagi ke materi kursus saya.
-3. Jangan tuliskan penjelasan lengkap untuk saya. Saya ingin tetap berlatih menjelaskan sendiri tanpa catatan.`;
+Materi kursusnya saya lampirkan. Tolong bantu saya:
+1. Bandingkan setiap poin di atas dengan materi yang saya lampirkan. Tandai yang keliru, tidak sesuai materi, atau terlalu umum, dan jelaskan alasannya dengan bahasa sederhana.
+2. Sebutkan poin penting dari materi itu yang terlewat di checklist saya, beserta bagian materi tempat saya bisa mengeceknya.
+3. Kalau materi belum terlampir, minta saya melampirkannya dulu sebelum memeriksa.
+4. Jangan tuliskan penjelasan lengkap untuk saya. Saya ingin tetap berlatih menjelaskan sendiri tanpa catatan.`;
 }
 
 // Bagian yang bisa dibuka: cara memakai prompt + isi prompt + tautan salin.
-function promptHelp(first, last) {
+function promptHelp(last) {
   return `<details class="plink"><summary><span>Cek poin isi materi dengan ChatGPT atau Claude</span></summary>
     <div class="plbody">
       <ol>
-        <li>${first}</li>
-        <li>Buka ChatGPT atau Claude, lalu tempel (paste).</li>
-        <li>AI akan memeriksa apakah poinmu benar dan apa yang mungkin terlewat, tanpa menuliskan jawaban lengkap.</li>
+        <li>Salin prompt di bawah.</li>
+        <li>Buka ChatGPT atau Claude, tempel promptnya, dan <b>lampirkan materi kursusmu</b> (PDF, slide, atau link).</li>
         <li>${last}</li>
       </ol>
       <textarea id="pt" class="in sm" rows="5" readonly aria-label="Isi prompt"></textarea>
@@ -406,8 +406,8 @@ async function viewEdit(id, presetGroup) {
       <div class="grp">Isi materi <em>poin yang wajib kamu sebut</em></div>
       <div id="pts" style="display:flex;flex-direction:column;gap:10px">${pointRows()}</div>
       <button class="add" id="addpt">+ Tambah poin</button>
-      <div class="tip">Ambil poin dari tujuan pembelajaran, rubrik, atau feedback ujian, jangan dari ingatan. Satu topik sebaiknya bisa dijelaskan dalam 1 sampai 3 menit. Kalau lebih, pecah jadi beberapa topik.</div>
-      ${promptHelp('Ketuk "Salin prompt" di bawah. Isinya daftar poin isi materi yang kamu tulis di atas.', 'Perbaiki poin di atas kalau perlu, lalu lanjut.')}
+      <div class="tip">Ambil poin dari materi kursus, bukan dari ingatan. Satu topik cukup 1 sampai 3 menit.</div>
+      ${promptHelp('Perbaiki poin di atas kalau ada yang keliru.')}
       <button class="btn" id="next">Lanjut: cara menjelaskan</button>
       ${topic ? '<button class="btn danger sm" id="hapus">Hapus topik ini</button>' : ''}`;
     const pts = $('#pts');
@@ -603,9 +603,9 @@ async function viewTopic(id) {
     </details>`).join('') : '<div class="empty">Belum ada rekaman. Jelaskan topik ini tanpa catatan untuk memulai jadwal tes ulang.</div>'}
     <button class="btn" data-go="#/rekam/${id}">${nextLabel}</button>
     <p class="store">Rekaman tersimpan di browser perangkat ini saja</p>
-    ${promptHelp('Ketuk "Salin prompt" di bawah. Isinya daftar poin isi materi topik ini.', 'Kalau ada poin yang keliru, perbaiki lewat tombol Ubah di atas.')}
+    ${promptHelp('Perbaiki lewat tombol Ubah kalau ada yang keliru.')}
     ${topic.done ? '' : `<div class="donecta"><button class="btn ghost sm" id="markdone">✓ Tandai selesai</button>
-      <span class="hint">Untuk topik yang sudah nempel atau ujiannya sudah lewat. Topik pindah ke bagian Selesai di bawah beranda dan tidak dijadwalkan tes ulang lagi. Riwayat tetap tersimpan.</span></div>`}`;
+      <span class="hint">Untuk topik yang sudah nempel atau ujiannya sudah lewat. Tes ulang berhenti, riwayat tetap ada.</span></div>`}`;
 
   // Muat audio saat riwayatnya dibuka. Tombol putar bawaan tidak bereaksi kalau audio belum punya sumber.
   app.querySelectorAll('details.att').forEach(d => d.addEventListener('toggle', () => {
@@ -760,7 +760,7 @@ async function viewCheck() {
 
   app.innerHTML = `
     <div class="bar"><button class="back" data-go="#/rekam/${topic.id}" aria-label="Rekam ulang">‹</button><span class="grow">Cek penjelasanmu</span></div>
-    ${url ? `<audio controls src="${url}"></audio><div class="tip">Putar ulang rekamanmu, lalu centang poin yang benar-benar kamu sebut. Jujur saja, ini untuk kamu sendiri.</div>` : '<div class="tip">Tanpa rekaman: centang poin yang tadi benar-benar kamu sebut dari ingatan.</div>'}
+    ${url ? `<audio controls src="${url}"></audio><div class="tip">Putar ulang, lalu centang poin yang benar-benar kamu sebut.</div>` : '<div class="tip">Tanpa rekaman: centang poin yang tadi benar-benar kamu sebut dari ingatan.</div>'}
     <div class="scores"><div class="sc"><div class="big" id="si"></div><span>Isi materi</span></div>
       <div class="sc"><div class="big" id="sc"></div><span>Cara menjelaskan</span></div></div>
     <div class="grp">Isi materi <em>poin dari topik ini</em></div>
