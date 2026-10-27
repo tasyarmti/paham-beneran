@@ -211,3 +211,8 @@ select.in { appearance: auto; }
 .item.fin { opacity: .75; }
 .donebox b { font-size: 17px; }
 .donecta { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 8px; }
+:root { color-scheme: light; }
+.scr { padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+.fab { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+:focus-visible { outline: 3px solid var(--yolk); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

@@ -53,6 +53,9 @@ const FLOWER = `<svg class="flower" viewBox="0 0 60 60" aria-hidden="true"><g fi
 }</g><circle cx="30" cy="30" r="9" fill="#F6D365"/></svg>`;
 
 /* ---------- Penyimpanan (IndexedDB) ---------- */
+// Versi Artifact (pratinjau di claude.ai) memblokir mikrofon dan pemilih jam bawaan.
+const IN_ARTIFACT = !!window.PB_ARTIFACT;
+
 const DB_NAME = 'paham-beneran';
 let dbPromise;
 function db() {
@@ -234,7 +237,7 @@ function bindPrompt(build) {
 /* ---------- State sementara ---------- */
 let pending = null;   // hasil rekaman yang belum disimpan
 let recorder = null;  // { mr, stream, ctx, raf, timer }
-let reminderTime = '19:00';
+let reminderTime = (() => { try { return localStorage.getItem('pb-jam') || '19:00'; } catch { return '19:00'; } })();
 let lastSaved = null; // attempt id terakhir untuk layar jadwal
 
 function stopRecorder() {
@@ -542,6 +545,8 @@ function bindDatePanel(topic, done) {
   $('#ndb').onclick = () => { $('#ndp').hidden = !$('#ndp').hidden; };
   $('#ndp').onclick = e => { const c = e.target.closest('[data-d]'); if (c) move(c.dataset.d); };
   $('#nds').onclick = () => move($('#nd').value);
+  // Di desktop, kalender bawaan biasanya hanya terbuka lewat ikon kecil; buka saat kolom diklik.
+  if (!IN_ARTIFACT) $('#nd').onclick = e => { try { e.target.showPicker?.(); } catch {} };
 }
 
 function resultList(title, labels, ticks) {
@@ -614,7 +619,7 @@ async function viewRecord(id) {
   if (!topic) return go('#/');
   let audience = pending?.topicId === id ? pending.audience : AUDIENCES[0];
   pending = null;
-  const canRecord = !window.PB_NO_LIVE_REC && !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+  const canRecord = !IN_ARTIFACT && !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
 
   app.innerHTML = `
     <div class="bar"><button class="back" data-go="#/topik/${id}" aria-label="Kembali">‹</button><span class="grow">${esc(topic.title)}</span></div>
@@ -846,16 +851,21 @@ async function viewSchedule(id) {
     <div class="tl">${tl}</div>
     <button class="tlink" id="ndb">Ubah tanggal tes ulang</button>
     ${datePanel(topic)}
-    <div class="fld"><label for="jm">Jam pengingat</label><select id="jm" class="in">${
-      Array.from({ length: 35 }, (_, k) => `${pad(5 + Math.floor(k / 2))}:${k % 2 ? '30' : '00'}`)
-        .map(v => `<option${v === time ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
+    <div class="fld"><label for="jm">Jam pengingat</label>${IN_ARTIFACT
+      ? `<select id="jm" class="in">${Array.from({ length: 35 }, (_, k) => `${pad(5 + Math.floor(k / 2))}:${k % 2 ? '30' : '00'}`)
+        .map(v => `<option${v === time ? ' selected' : ''}>${v}</option>`).join('')}</select>`
+      : `<input type="time" id="jm" class="in" value="${time}">`}</div>
     <a class="btn" id="gc" target="_blank" rel="noopener">Tambah ke Google Calendar</a>
     <button class="btn ghost sm" id="ics">Unduh pengingat (.ics)</button>
     <button class="btn line sm" data-go="#/">Kembali ke beranda</button>`;
 
   const refresh = () => { $('#gc').href = calendarLinks(topic, time).gcal; };
   refresh();
-  $('#jm').onchange = e => { time = reminderTime = e.target.value || '19:00'; refresh(); };
+  $('#jm').onchange = e => {
+    time = reminderTime = e.target.value || '19:00';
+    try { localStorage.setItem('pb-jam', time); } catch {}
+    refresh();
+  };
   bindDatePanel(topic, () => viewSchedule(id));
   $('#ics').onclick = async () => {
     const ics = calendarLinks(topic, time).ics;

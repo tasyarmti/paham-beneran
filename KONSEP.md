@@ -58,5 +58,7 @@ Satu rekaman = satu percobaan untuk satu topik. Setiap topik menyimpan riwayat p
 ## Teknis
 
 - HTML, CSS, dan JavaScript biasa, tanpa build step. Bisa langsung di-deploy sebagai situs statis di Vercel.
-- Perekaman: MediaRecorder API. Penyimpanan: IndexedDB.
+- Perekaman: MediaRecorder API. Penyimpanan: IndexedDB, dan app meminta browser menyimpan datanya secara permanen supaya tidak mudah terhapus.
+- Bisa dipasang di layar utama HP (web app manifest dan ikon).
+- Versi pratinjau di Artifact claude.ai punya batasan: mikrofon diblokir (diganti unggah rekaman dari HP) dan pemilih jam bawaan diblokir (diganti daftar jam per 30 menit). Di situs asli kedua batasan ini tidak berlaku, jadi app merekam langsung dan memakai pemilih jam bawaan.
 - Tema "Teh Hangat" dengan palet chamomile: `#FFFDF5`, `#FFF5CC`, `#FFEFA4`, `#F6D365`, `#525007`, `#33320F`. Font Nunito.

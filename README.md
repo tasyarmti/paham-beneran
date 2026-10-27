@@ -22,6 +22,16 @@ Lalu buka http://localhost:8000. Mikrofon hanya bisa dipakai di `localhost` atau
 2. Framework Preset: **Other**. Build command dan output directory dibiarkan kosong.
 3. Klik **Deploy**.
 
+## Deploy ke Cloudflare Pages
+
+1. Di Cloudflare, buka **Workers & Pages → Create → Pages → Connect to Git**, lalu pilih repo ini.
+2. Framework preset: **None**. Build command dikosongkan, build output directory diisi `/`.
+3. Klik **Save and Deploy**.
+
+## Pasang di layar utama HP
+
+Buka situsnya, lalu pilih **Tambahkan ke Layar Utama** (Safari: tombol Bagikan; Chrome: menu titik tiga). App akan terbuka seperti aplikasi biasa dengan ikon bunga chamomile.
+
 ## Data
 
 Semua topik, hasil, dan rekaman disimpan di browser perangkat yang dipakai (IndexedDB). Tidak ada server, login, atau AI di dalam app.
