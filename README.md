@@ -2,6 +2,10 @@
 
 Web app untuk menguji pemahaman materi kursus dengan cara menjelaskan ulang tanpa catatan (teach-back), mengecek poin yang terlewat, lalu mengulanginya dengan jeda (spaced repetition).
 
+**Coba langsung:** https://paham-beneran.pages.dev
+
+**Untuk siapa:** orang yang belajar sendiri lewat kursus online (misalnya ESG, bahasa, atau Excel) dan sering merasa sudah paham karena tugas open book selesai, tapi kesulitan menjelaskan ulang materinya beberapa hari kemudian tanpa catatan.
+
 Alurnya: buat topik dan poin penting → rekam penjelasan tanpa catatan → putar ulang dan centang checklist → tulis catatan → dapat jadwal tes ulang 1, 3, 7, 14, 30 hari, plus pengingat ke Google Calendar.
 
 Latar belakang, keputusan desain, dan fitur yang ditunda ada di [KONSEP.md](KONSEP.md).
